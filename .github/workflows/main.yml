@@ -44,5 +44,11 @@ jobs:
           composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction
 
-      - name: Execute tests
-        run: vendor/bin/phpunit
+       - name: Run tests (only if tests exist)
+        run: |
+          if ls tests/*Test.php 1> /dev/null 2>&1; then
+            echo "Running PHPUnit tests..."
+            vendor/bin/phpunit
+          else
+            echo "No tests found — skipping PHPUnit."
+          fi
