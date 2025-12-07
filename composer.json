@@ -11,8 +11,7 @@
     "homepage": "https://github.com/mapo-89/laravel-homeassistant-api",
     "license": "MIT",
     "require": {
-        "php": ">=8.1",
-        "guzzlehttp/guzzle": "^7.0"
+        "php": ">=8.1"
     },
     "autoload": {
         "psr-4": {
