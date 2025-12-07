@@ -37,18 +37,15 @@ class HomeassistantCommand extends Command
             return 0;
         }
 
-        /* TO DO: Service call
-
         $data = [];
         if ($entity) {
             $data['entity_id'] = $entity;
         }
 
 
-        $response = $ha->callService($domain, $service, $data);
+        $response = $ha->services()->call($domain, $service, $data);
         $this->info('Service called successfully:');
         $this->line(json_encode($response, JSON_PRETTY_PRINT));
         return 0;
-        */
     }
 }
