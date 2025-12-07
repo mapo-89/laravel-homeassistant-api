@@ -7,8 +7,8 @@
 
 namespace Mapo89\LaravelHomeassistantApi\Api;
 
-use Illuminate\Support\Collection;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
+use Mapo89\LaravelHomeassistantApi\DTOs\State;
 
 /**
  * Homeassistant REST Api
@@ -22,11 +22,12 @@ class States extends ApiClient
     /**
      * Return all states.
      *
-     * @return Collection
+     * @return State[]
      */
-    public function all(): Collection
+    public function getStates(): array
     {
-        return Collection::make($this->_get('states'));
+        $raw = $this->_get('states');
+        return array_map(fn($state) => new State($state), $raw);
     }
 
     // =========================== get ====================================

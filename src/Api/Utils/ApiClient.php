@@ -7,13 +7,16 @@
 
 namespace Mapo89\LaravelHomeassistantApi\Api\Utils;
 
-use Illuminate\Validation\UnauthorizedException;
-use GuzzleHttp\Exception\BadResponseException;
-use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Http;
+use Mapo89\LaravelHomeassistantApi\Exceptions\{
+    HomeAssistantException,
+    UnauthorizedException,
+    EntityNotFoundException,
+    ServiceCallFailedException
+};
 
 class ApiClient
 {
-    protected $client;
     protected $baseUrl;
     protected $apiToken;
 
@@ -23,7 +26,6 @@ class ApiClient
             config('homeassistant-api.url', 'http://homeassistant.local:8123/api/')
         );
         $this->apiToken = config('homeassistant-api.token');
-        $this->client = $client ?? new Client(['base_uri' => $this->baseUrl]);
     }
 
     private function normalizeBaseUrl(string $url): string
@@ -37,71 +39,24 @@ class ApiClient
         return $url . '/';
     }
 
-    private function getClient(): Client
-    {
-        return $this->client;
-    }
-
-    private function getToken(): string
-    {
-        return $this->apiToken;
-    }
-
     public function execute(string $httpMethod, string $endpoint = '', array $parameters = [])
     {
-        try {
-            $headers = [
-                'Authorization' => 'Bearer ' . $this->getToken(),
-                'Accept'        => 'application/json'
-            ];
-            
-            $response = $this->getClient()->{$httpMethod}($endpoint, [
-                'headers' => $headers,
-                'json' => $parameters
-            ]);
+        $response = Http::withToken($this->apiToken)
+                        ->$httpMethod("{$this->baseUrl}{$endpoint}", $parameters);
 
-            return $this->handleResponse($response);
-        } catch (BadResponseException $exception) {
-            $this->handleException($exception);
+        if ($response->status() === 401) {
+            throw new UnauthorizedException("Unauthorized: Check your token");
         }
 
-    }
-
-    // ========================= Response methods ======================================
-
-    private function handleResponse($response): array
-    {
-        $responseBody = json_decode((string)$response->getBody(), true);
-
-        if (isset($responseBody['error'])) {
-            throw new \Exception($responseBody['message'] ?? 'Unknown error');
-        }
-        if (isset($responseBody['status']) && $responseBody['status'] == 400) {
-            throw new UnauthorizedException($responseBody['message'] ?? 'Unauthorized');
+        if ($response->status() === 404) {
+            throw new EntityNotFoundException("Entity not found: {$endpoint}");
         }
 
-        return $responseBody;
-    }
-
-    private function handleException($exception): void
-    {
-        $raw = (string)$exception->getResponse()->getBody();
-        $decoded = json_decode($raw, true);
-
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-
-            if (isset($decoded['error'])) {
-                throw new \Exception($decoded['message'] ?? $decoded['error']);
-            }
-
-            if (($decoded['status'] ?? null) == 400) {
-                throw new UnauthorizedException($decoded['message'] ?? 'Unauthorized');
-            }
-
-            throw new \Exception('API Error: ' . ($decoded['message'] ?? 'Unknown JSON error'));
+        if ($response->status() >= 400) {
+            throw new ServiceCallFailedException("Request failed with status {$response->status()}");
         }
 
-        throw new \Exception("API Error: {$raw}");
+        return $response->json();
     }
 
     // ========================= base methods ======================================
