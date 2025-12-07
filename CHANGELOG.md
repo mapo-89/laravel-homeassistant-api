@@ -2,7 +2,26 @@
 
 All notable changes to `laravel-homeassistant-api` will be documented in this file
 
-## v1.1.0 - 2025-12-07
+# Changelog
+
+## [1.2.0] - 2025-12-07
+
+### Added
+- Introduced **dynamic runtime configuration** for the Home Assistant client.
+- `HomeassistantApi::make()` can now accept an array to load configuration dynamically.
+- The API client now supports multi-instance usage (e.g. loading URL/token from a database).
+- Added validation to ensure dynamic configs provide both `url` and `token`.
+
+### Changed
+- States and Services APIs now use the shared injected ApiClient instance.
+- Improved documentation with examples for dynamic configuration usage.
+
+### Notes
+- Artisan commands still rely on `.env` configuration and cannot use dynamic runtime config.
+
+---
+
+## [1.1.0] - 2025-12-07
 
 ### Added
 
@@ -20,7 +39,7 @@ All notable changes to `laravel-homeassistant-api` will be documented in this fi
 
 ---
 
-## 1.0.0 - 2025-12-07
+## [1.0.0] - 2025-12-07
 
 ### Added
 - First stable version of the Laravel Home Assistant API package

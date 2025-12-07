@@ -18,6 +18,12 @@ use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
  */
 class States extends ApiClient
 {
+    protected ApiClient $client;
+
+    public function __construct(ApiClient $client)
+    {
+        $this->client = $client;
+    }
     // =========================== all ====================================
 
     /**
@@ -27,7 +33,7 @@ class States extends ApiClient
      */
     public function all(): array
     {
-        $raw = $this->_get('states');
+        $raw = $this->client->_get('states');
         return array_map(fn($state) => new State($state), $raw);
     }
 
@@ -41,7 +47,7 @@ class States extends ApiClient
      */
     public function get($entity_id)
     {
-        $raw = $this->_get('states/' . $entity_id);
+        $raw = $this->client->_get('states/' . $entity_id);
         return new State($raw);
     }
 
@@ -63,7 +69,7 @@ class States extends ApiClient
             'attributes' => $attributes
         ];
 
-        $raw = $this->_post('states/' . $entity_id, $payload);
+        $raw = $this->client->_post('states/' . $entity_id, $payload);
         return new State($raw);
     }
 
@@ -78,7 +84,7 @@ class States extends ApiClient
      */
     public function delete(string $entity_id): bool
     {
-        $this->_delete('states/' . $entity_id);
+        $this->client->_delete('states/' . $entity_id);
         return true; // Wenn keine Exception, war es erfolgreich
     }
 }

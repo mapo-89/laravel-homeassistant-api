@@ -25,17 +25,10 @@ HA_URL=http://homeassistant.local:8123
 HA_TOKEN=your_long_lived_token
 ```
 
-Alternativ kannst du den Token dynamisch laden, z. B. aus einer Datenbank. Im `AppServiceProvider` innerhalb der `boot()`-Methode:
+## ⚡️ Dynamische Konfiguration (URL & Token zur Laufzeit)
 
-```php
-use Illuminate\Support\Facades\Config;
-use App\Models\Integration;
-
-public function boot()
-{
-    Config::set('homeassistant-api.token', Integration::getApiToken('Homeassistant'));
-}
-```
+Neben der statischen Konfiguration über die config/homeassistant.php unterstützt dieses Package auch dynamische Konfigurationen zur Laufzeit.
+Das ist z. B. nützlich, wenn jeder Benutzer einen eigenen Home Assistant Token besitzt oder die Instanz-URL dynamisch gesetzt werden soll.
 
 Optional: Veröffentliche die Konfigurationsdatei:
 
@@ -52,6 +45,13 @@ use Mapo89\LaravelHomeassistantApi\Facades\HomeassistantApi;
 
 // Beispiel: Abrufen von allen States
 $homeassistantApi = HomeassistantApi::make();
+
+//Alternative mit dynamischer COnfig
+$config = [
+    'url' => 'http://homeassistant.local:8123',
+    'token' => 'your_long_lived_token'
+];
+$homeassistantApi = HomeassistantApi::make($config);
 $homeassistantApi->states()->all(); // passe das an deinen Anwendungsfall an
 ```
 
@@ -61,14 +61,14 @@ $homeassistantApi->states()->all(); // passe das an deinen Anwendungsfall an
 
 ## Artisan Command
 
-Liste alle States oder rufe einen Service auf:
+Die folgenden Artisan-Befehle verwenden immer die statische Konfiguration aus der `.env` bzw. aus `config/homeassistant.php`:
 
 ```bash
 # Alle States auflisten
 php artisan ha:call
 
 
-# Einen Service aufrufen (z.B. Licht umschalten) (in Umsetzung)
+# Einen Service aufrufen (z.B. Licht umschalten) 
 php artisan ha:call light toggle --entity=light.wohnzimmer
 ```
 

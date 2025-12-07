@@ -6,6 +6,12 @@ use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
 
 class Services extends ApiClient
 {
+    protected ApiClient $client;
+
+    public function __construct(ApiClient $client)
+    {
+        $this->client = $client;
+    }
     /**
      * Call a service in a domain.
      *
@@ -17,7 +23,7 @@ class Services extends ApiClient
      */
     public function call(string $domain, string $service, array $data = []): array
     {
-        return $this->_post("services/{$domain}/{$service}", $data);
+        return $this->client->_post("services/{$domain}/{$service}", $data);
     }
 
     // =========================== Convenience Methods ====================================

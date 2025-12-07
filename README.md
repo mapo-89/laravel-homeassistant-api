@@ -25,17 +25,10 @@ HA_URL=http://homeassistant.local:8123
 HA_TOKEN=your_long_lived_token
 ```
 
-Alternatively, you can load the token dynamically (e.g., from a database). In your `AppServiceProvider` inside the `boot()` method:
+## ⚡️ Dynamic configuration (URL & token at runtime)
 
-```php
-use Illuminate\Support\Facades\Config;
-use App\Models\Integration;
-
-public function boot()
-{
-    Config::set('Homeassistant-api.api_token', Integration::getApiToken('Homeassistant'));
-}
-```
+In addition to static configuration via config/homeassistant.php, this package also supports dynamic configurations at runtime.
+This is useful, for example, if each user has their own Home Assistant token or if the instance URL is to be set dynamically.
 
 Optionally, you can publish the config file:
 
@@ -52,6 +45,13 @@ use Mapo89\LaravelHomeassistantApi\Facades\HomeassistantApi;
 
 // Example: Fetch all states
 $homeassistantApi = HomeassistantApi::make();
+
+//Alternative with dynamic configuration
+$config = [
+    'url' => 'http://homeassistant.local:8123',
+    'token' => 'your_long_lived_token'
+];
+$homeassistantApi = HomeassistantApi::make($config);
 $homeassistantApi->states()->all(); // customize this based on your needs
 ```
 
@@ -61,7 +61,7 @@ $homeassistantApi->states()->all(); // customize this based on your needs
 
 ## Artisan Command
 
-List all states or call a service:
+The following Artisan commands always use the static configuration from `.env` or `config/homeassistant.php`:
 
 ```bash
 # List all states

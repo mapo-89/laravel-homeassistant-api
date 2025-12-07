@@ -17,15 +17,11 @@ use Mapo89\LaravelHomeassistantApi\Exceptions\{
 
 class ApiClient
 {
-    protected $baseUrl;
-    protected $apiToken;
+    protected $configLoader;
 
-    public function __construct()
+    public function __construct(?array $configLoader = null)
     {
-        $this->baseUrl = $this->normalizeBaseUrl(
-            config('homeassistant-api.url', 'http://homeassistant.local:8123/api/')
-        );
-        $this->apiToken = config('homeassistant-api.token');
+        $this->configLoader = $configLoader;
     }
 
     private function normalizeBaseUrl(string $url): string
@@ -39,10 +35,35 @@ class ApiClient
         return $url . '/';
     }
 
+    /**
+     * Get URL & Token
+     */
+    public function getConfig(): array
+    {
+        if ($this->configLoader) {
+            $config =$this->configLoader;
+            
+            if (!isset($config['url'], $config['token'])) {
+                throw new \InvalidArgumentException("Config loader must return ['url', 'token']");
+            }
+            return $config;
+        }
+
+        // fallback auf config/env
+        return [
+            'url' => config('homeassistant-api.url'),
+            'token' => config('homeassistant-api.token')
+        ];
+    }
+
     public function execute(string $httpMethod, string $endpoint = '', array $parameters = [])
     {
-        $response = Http::withToken($this->apiToken)
-                        ->$httpMethod("{$this->baseUrl}{$endpoint}", $parameters);
+        $config = $this->getConfig();
+        $baseUrl = $this->normalizeBaseUrl($config['url']);
+        $apiToken = $config['token'];
+
+        $response = Http::withToken($apiToken)
+                        ->$httpMethod("{$baseUrl}{$endpoint}", $parameters);
 
         if ($response->status() === 401) {
             throw new UnauthorizedException("Unauthorized: Check your token");

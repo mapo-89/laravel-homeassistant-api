@@ -7,11 +7,16 @@
 
 namespace Mapo89\LaravelHomeassistantApi;
 
+use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
+
 class HomeassistantApi
 {
-    public static function make()
+    protected $client;
+    public static function make(?array $configLoader = null): self
     {
-        return new static();
+        $instance = new static();
+        $instance->client = new ApiClient($configLoader);
+        return $instance;
     }
 
     public function __call($method, array $parameters)
@@ -23,10 +28,10 @@ class HomeassistantApi
     {
         $class = "\\Mapo89\\LaravelHomeassistantApi\\Api\\" . ucwords($method);
 
-        if (class_exists($class)) {
-            return new $class();
+        if (!class_exists($class)) {
+            throw new \BadMethodCallException("Undefined method [{$method}] called.");
         }
 
-        throw new \BadMethodCallException("Undefined method [{$method}] called.");
+        return new $class($this->client);
     }
 }
