@@ -9,6 +9,7 @@ namespace Mapo89\LaravelHomeassistantApi\Api;
 
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
 use Mapo89\LaravelHomeassistantApi\DTOs\State;
+use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
 
 /**
  * Homeassistant REST Api
@@ -24,7 +25,7 @@ class States extends ApiClient
      *
      * @return State[]
      */
-    public function getStates(): array
+    public function all(): array
     {
         $raw = $this->_get('states');
         return array_map(fn($state) => new State($state), $raw);
@@ -36,10 +37,48 @@ class States extends ApiClient
      * Return a single state.
      *
      * @param $entity_id
-     * @return mixed
+     * @return State
      */
     public function get($entity_id)
     {
-        return $this->_get('states/' . $entity_id);
+        $raw = $this->_get('states/' . $entity_id);
+        return new State($raw);
+    }
+
+    // =========================== create / update ====================================
+
+    /**
+     * Create or update a state.
+     *
+     * @param string $entity_id
+     * @param string $state
+     * @param array $attributes
+     * @return State
+     * @throws HomeAssistantException
+     */
+    public function createOrUpdate(string $entity_id, string $state, array $attributes = []): State
+    {
+        $payload = [
+            'state' => $state,
+            'attributes' => $attributes
+        ];
+
+        $raw = $this->_post('states/' . $entity_id, $payload);
+        return new State($raw);
+    }
+
+    // =========================== delete ====================================
+
+    /**
+     * Delete a custom state.
+     *
+     * @param string $entity_id
+     * @return bool
+     * @throws HomeAssistantException
+     */
+    public function delete(string $entity_id): bool
+    {
+        $this->_delete('states/' . $entity_id);
+        return true; // Wenn keine Exception, war es erfolgreich
     }
 }
