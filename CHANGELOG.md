@@ -2,6 +2,24 @@
 
 All notable changes to `laravel-homeassistant-api` will be documented in this file
 
+## v1.1.0 - 2025-12-07
+
+### Added
+
+* States API: all(), get(), createOrUpdate(), delete()
+* Services API: call(), turnOn(), turnOff(), toggle()
+* Typed State DTOs
+* New Exceptions: HomeAssistantException, UnauthorizedException, EntityNotFoundException, ServiceCallFailedException
+* Improved error handling in API client
+
+### Fixed / Improved
+
+* Clearer structure for States and Services classes
+* Laravel-friendly API methods (facades, config, DI)
+* Base setup for unit testing
+
+---
+
 ## 1.0.0 - 2025-12-07
 
 ### Added
