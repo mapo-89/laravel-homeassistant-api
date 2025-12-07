@@ -45,7 +45,7 @@ jobs:
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction
 
        - name: Run tests (only if tests exist)
-        run: |
+         run: |
           if ls tests/*Test.php 1> /dev/null 2>&1; then
             echo "Running PHPUnit tests..."
             vendor/bin/phpunit
