@@ -1,35 +1,43 @@
 <?php
-/*
- * HomeassistantApi.php
- * @author Manuel Postler <info@postler.de>
- * @copyright 2025 Manuel Postler
- */
 
 namespace Mapo89\LaravelHomeassistantApi;
 
+use Illuminate\Support\Str;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
 
 class HomeassistantApi
 {
-    protected $client;
-    public static function make(?array $configLoader = null): self
+    protected ApiClient $client;
+
+    public function __construct(?ApiClient $client = null)
     {
-        $instance = new static();
-        $instance->client = new ApiClient($configLoader);
-        return $instance;
+        $this->client = $client ?? new ApiClient();
     }
 
-    public function __call($method, array $parameters)
+    public static function make(?array $config = null): self
+    {
+        return new self(
+            new ApiClient($config)
+        );
+    }
+
+    public function __call(string $method, array $parameters): object
     {
         return $this->getApiInstance($method);
     }
 
-    protected function getApiInstance($method)
+    protected function getApiInstance(string $method): object
     {
-        $class = "\\Mapo89\\LaravelHomeassistantApi\\Api\\" . ucwords($method);
+        $class = __NAMESPACE__ . '\\Api\\' . Str::studly($method);
 
         if (!class_exists($class)) {
-            throw new \BadMethodCallException("Undefined method [{$method}] called.");
+            throw new \BadMethodCallException(
+                sprintf(
+                    'API endpoint [%s] does not exist. Expected class %s.',
+                    $method,
+                    $class
+                )
+            );
         }
 
         return new $class($this->client);
