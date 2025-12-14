@@ -10,7 +10,8 @@ namespace Mapo89\LaravelHomeassistantApi\Api;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
 use Mapo89\LaravelHomeassistantApi\DTOs\State;
 use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
-
+use Mapo89\LaravelHomeassistantApi\Query\StatesQuery;
+use Illuminate\Support\Facades\Cache;
 /**
  * Homeassistant REST Api
  *
@@ -25,11 +26,21 @@ class States extends ApiClient
         $this->client = $client;
     }
 
-    private function mapStates(array $raw): array
+    public function __call($method, $arguments)
     {
-        return array_map(fn ($state) => new State($state), $raw);
+        return $this->query()->{$method}(...$arguments);
     }
 
+    public function query(): StatesQuery
+    {
+        $raw = Cache::remember(
+            'ha.states',
+            now()->addSeconds(5),
+            fn () => $this->client->_get('states')
+        );
+
+        return new StatesQuery($raw);
+    }
     // =========================== all ====================================
 
     /**
@@ -39,51 +50,8 @@ class States extends ApiClient
      */
     public function all(): array
     {
-        return $this->mapStates(
-        $this->client->_get('states')
-        );
+        return $this->query()->get();
     }
-
-    // =========================== filterByEntities ===========================
-
-    /**
-     * Return only states matching given entity_ids.
-     *
-     * @param string[] $entityIds
-     * @return State[]
-     */
-    public function filterByEntities(array $entityIds): array
-    {
-        if ($entityIds === []) {
-            return [];
-        }
-
-        $raw = array_filter(
-            $this->client->_get('states'),
-            fn ($state) => in_array($state['entity_id'], $entityIds, true)
-        );
-
-        return $this->mapStates(array_values($raw));
-    }
-
-    // =========================== filterByDomain ===========================
-
-    /**
-     * Return only states matching given domains.
-     *
-     * @param string[] $domain
-     * @return State[]
-     */
-    public function filterByDomain(string $domain): array
-    {
-        $raw = $this->client->_get('states');
-
-        return $this->mapStates(array_filter(
-            $raw,
-            fn ($state) => str_starts_with($state['entity_id'], $domain . '.')
-        ));
-    }
-
 
     // =========================== get ====================================
 
@@ -93,10 +61,11 @@ class States extends ApiClient
      * @param $entity_id
      * @return State
      */
-    public function get($entity_id)
+    public function get($entity_id): State 
     {
-        $raw = $this->client->_get('states/' . $entity_id);
-        return new State($raw);
+        return new State(
+            $this->client->_get('states/' . $entity_id)
+        );
     }
 
     // =========================== create / update ====================================

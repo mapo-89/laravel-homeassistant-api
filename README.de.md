@@ -59,6 +59,110 @@ $homeassistantApi->states()->all(); // passe das an deinen Anwendungsfall an
 
 ---
 
+## Query-Builder API (States)
+
+Home Assistant unterstützt kein serverseitiges Filtern von States.
+Dieses Package stellt daher eine **Query-Builder-artige API** zur Verfügung,
+mit der States clientseitig gefiltert werden können – inspiriert von Laravel Eloquent.
+
+---
+
+## ✨ Beispiel
+
+```php
+use Mapo89\LaravelHomeassistantApi\Facades\HomeassistantApi;
+
+$states = HomeassistantApi::make()
+    ->states()
+    ->whereDomain('light')
+    ->whereState('on')
+    ->get();
+```
+
+---
+
+## 🧱 Verfügbare Query-Methoden
+
+### `whereDomain(string $domain)`
+
+Filtert nach der Domain einer Entity (z. B. `light`, `sensor`, `switch`).
+
+```php
+$lights = HomeassistantApi::make()
+    ->states()
+    ->whereDomain('light')
+    ->get();
+```
+
+---
+
+### `whereState(string $state)`
+
+Filtert nach dem State einer Entity (z. B. `on`, `off`, `unavailable`).
+
+```php
+$active = HomeassistantApi::make()
+    ->states()
+    ->whereState('on')
+    ->get();
+```
+
+---
+
+### `whereEntityIds(array $entityIds)`
+
+Filtert nach einer Liste konkreter Entity-IDs.
+
+```php
+$states = HomeassistantApi::make()
+    ->states()
+    ->whereEntityIds([
+        'light.kitchen',
+        'sensor.temperature',
+    ])
+    ->get();
+```
+
+---
+
+### `whereAttribute(string $key, mixed $value)`
+
+Filtert nach Attributen einer Entity.
+
+```php
+$lights = HomeassistantApi::make()
+    ->states()
+    ->whereDomain('light')
+    ->whereAttribute('brightness', 255)
+    ->get();
+```
+
+---
+
+### `get()`
+
+Gibt alle gefilterten States als Array von `State` DTOs zurück.
+
+```php
+$states = HomeassistantApi::make()
+    ->states()->get();
+```
+
+---
+
+### `first()`
+
+Gibt den ersten passenden State oder `null` zurück.
+
+```php
+$state = HomeassistantApi::make()
+    ->states()
+    ->whereEntityIds(['light.kitchen'])
+    ->first();
+```
+
+---
+
 ## Artisan Command
 
 Die folgenden Artisan-Befehle verwenden immer die statische Konfiguration aus der `.env` bzw. aus `config/homeassistant.php`:

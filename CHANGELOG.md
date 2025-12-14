@@ -4,6 +4,13 @@ All notable changes to `laravel-homeassistant-api` will be documented in this fi
 
 # Changelog
 
+## [1.3.0] - 2025-12-14
+
+### Added
+- Query builder-style API for states
+- Client-side filters: domain, state, entity ID, attributes
+- `get()` and `first()` methods
+
 ## [1.2.0] - 2025-12-07
 
 ### Added

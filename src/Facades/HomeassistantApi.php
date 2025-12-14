@@ -5,7 +5,7 @@
  * @copyright 2025 Manuel Postler
  */
 
- namespace Mapo89\LaravelHomeassistantApi\Facades;
+namespace Mapo89\LaravelHomeassistantApi\Facades;
 
 use Illuminate\Support\Facades\Facade;
 

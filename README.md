@@ -59,6 +59,110 @@ $homeassistantApi->states()->all(); // customize this based on your needs
 
 ---
 
+## Query Builder API (States)
+
+Home Assistant does not support server-side filtering of states.
+This package therefore provides a **query builder-like API**
+that can be used to filter states on the client side – inspired by Laravel Eloquent.
+
+---
+
+## ✨ Example
+
+```php
+use Mapo89\LaravelHomeassistantApi\Facades\HomeassistantApi;
+
+$states = HomeassistantApi::make()
+    ->states()
+    ->whereDomain('light')
+    ->whereState('on')
+    ->get();
+```
+
+---
+
+## 🧱 Available query methods
+
+### `whereDomain(string $domain)`
+
+Filters by the domain of an entity (e.g., `light`, `sensor`, `switch`).
+
+```php
+$lights = HomeassistantApi::make()
+    ->states()
+    ->whereDomain('light')
+    ->get();
+```
+
+---
+
+### `whereState(string $state)`
+
+Filters by the state of an entity (e.g., `on`, `off`, `unavailable`).
+
+```php
+$active = HomeassistantApi::make()
+    ->states()
+    ->whereState('on')
+    ->get();
+```
+
+---
+
+### `whereEntityIds(array $entityIds)`
+
+Filters by a list of specific entity IDs.
+
+```php
+$states = HomeassistantApi::make()
+    ->states()
+    ->whereEntityIds([
+        'light.kitchen',
+        'sensor.temperature',
+    ])
+    ->get();
+```
+
+---
+
+### `whereAttribute(string $key, mixed $value)`
+
+Filters by attributes of an entity.
+
+```php
+$lights = HomeassistantApi::make()
+    ->states()
+    ->whereDomain('light')
+    ->whereAttribute('brightness', 255)
+    ->get();
+```
+
+---
+
+### `get()`
+
+Returns all filtered states as an array of `State` DTOs.
+
+```php
+$states = HomeassistantApi::make()
+    ->states()->get();
+```
+
+---
+
+### `first()`
+
+Returns the first matching state or `null`.
+
+```php
+$state = HomeassistantApi::make()
+    ->states()
+    ->whereEntityIds(['light.kitchen'])
+    ->first();
+```
+
+---
+
 ## Artisan Command
 
 The following Artisan commands always use the static configuration from `.env` or `config/homeassistant.php`:
