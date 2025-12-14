@@ -24,6 +24,12 @@ class States extends ApiClient
     {
         $this->client = $client;
     }
+
+    private function mapStates(array $raw): array
+    {
+        return array_map(fn ($state) => new State($state), $raw);
+    }
+
     // =========================== all ====================================
 
     /**
@@ -33,9 +39,51 @@ class States extends ApiClient
      */
     public function all(): array
     {
-        $raw = $this->client->_get('states');
-        return array_map(fn($state) => new State($state), $raw);
+        return $this->mapStates(
+        $this->client->_get('states')
+        );
     }
+
+    // =========================== filterByEntities ===========================
+
+    /**
+     * Return only states matching given entity_ids.
+     *
+     * @param string[] $entityIds
+     * @return State[]
+     */
+    public function filterByEntities(array $entityIds): array
+    {
+        if ($entityIds === []) {
+            return [];
+        }
+
+        $raw = array_filter(
+            $this->client->_get('states'),
+            fn ($state) => in_array($state['entity_id'], $entityIds, true)
+        );
+
+        return $this->mapStates(array_values($raw));
+    }
+
+    // =========================== filterByDomain ===========================
+
+    /**
+     * Return only states matching given domains.
+     *
+     * @param string[] $domain
+     * @return State[]
+     */
+    public function filterByDomain(string $domain): array
+    {
+        $raw = $this->client->_get('states');
+
+        return $this->mapStates(array_filter(
+            $raw,
+            fn ($state) => str_starts_with($state['entity_id'], $domain . '.')
+        ));
+    }
+
 
     // =========================== get ====================================
 
