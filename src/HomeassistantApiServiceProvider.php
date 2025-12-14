@@ -23,10 +23,6 @@ class HomeassistantApiServiceProvider extends ServiceProvider
         $this->app->singleton('homeassistant-api', function () {
             return new HomeassistantApi();
         });
-
-        $this->commands([
-            Console\HomeassistantCommand::class,
-        ]);
     }
 
     /**
@@ -39,6 +35,10 @@ class HomeassistantApiServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/config.php' => config_path('homeassistant-api.php'),
             ], 'config');
+
+            $this->commands([
+                Console\HomeassistantCommand::class,
+            ]);
         }
     }
 }
