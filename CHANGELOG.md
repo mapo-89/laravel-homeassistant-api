@@ -2,7 +2,30 @@
 
 All notable changes to `laravel-homeassistant-api` will be documented in this file
 
-# Changelog
+## [v1.4.0] - 2025-12-15
+
+### Added
+- add proper template rendering with raw response support
+- add Config & System API endpoint
+- add Logbook API endpoint with DTO support
+- add History endpoint support
+- add Events endpoint support
+
+### Changed
+- (API-Client) improve typing, validation, and error handling
+- enhance typing and IDE support in Facade
+- improve HomeassistantApiServiceProvider registration and config
+- improve HomeassistantApi robustness and DX
+
+### Documentation
+- add Events and History API documentation
+
+### Deployment
+- update release workflow
+- add release workflow
+- Change php version in gut hub workflow
+
+
 
 ## [1.3.0] - 2025-12-14
 
