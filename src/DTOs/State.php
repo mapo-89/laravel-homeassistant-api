@@ -1,7 +1,6 @@
 <?php
 
 namespace Mapo89\LaravelHomeassistantApi\DTOs;
-
 class State
 {
     public string $entity_id;
