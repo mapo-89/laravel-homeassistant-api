@@ -118,6 +118,25 @@ $flat = $homeassistantApi->history()->flat(
 
 ---
 
+### 📒 Logbook API
+
+Access the Home Assistant logbook – ideal for user activities, automations, and system events.
+
+> ⚠️ The logbook API requires at least one `entityId`.
+
+```php
+$entries = $homeassistantApi->logbook()->get(
+    start: now()->subHours(6),
+    entityIds: ['light.kitchen'],
+    end: now()
+);
+```
+
+**Supported endpoint**
+- `GET /api/logbook`
+
+---
+
 ## Query Builder API (States)
 
 Home Assistant does not support server-side filtering of states.
