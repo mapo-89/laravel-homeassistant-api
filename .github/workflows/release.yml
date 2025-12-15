@@ -22,25 +22,25 @@ jobs:
       - name: Generate release notes from commits
         id: changelog
         run: |
-          VERSION="${GITHUB_REF_NAME}"
-          DATE=$(date +'%Y-%m-%d')
+            VERSION="${GITHUB_REF_NAME}"
+            DATE=$(date +'%Y-%m-%d')
 
-          PREVIOUS_TAG=$(git tag --sort=-creatordate | grep -v "$VERSION" | head -n 1)
-          echo "Previous tag: $PREVIOUS_TAG"
+            PREVIOUS_TAG=$(git tag --sort=-creatordate | grep -v "$VERSION" | head -n 1)
 
-          echo "## [$VERSION] - $DATE" > RELEASE_NOTES.md
+            NOTES="## [$VERSION] - $DATE\n"
 
-          if [ -z "$PREVIOUS_TAG" ]; then
-            git log --pretty=format:"- %s" >> RELEASE_NOTES.md
-          else
-            git log "$PREVIOUS_TAG"..HEAD --pretty=format:"- %s" >> RELEASE_NOTES.md
-          fi
+            if [ -z \"$PREVIOUS_TAG\" ]; then
+            NOTES+=$(git log --pretty=format:\"- %s\")
+            else
+            NOTES+=$(git log \"$PREVIOUS_TAG\"..HEAD --pretty=format:\"- %s\")
+            fi
 
-          echo "" >> RELEASE_NOTES.md
+            echo -e "$NOTES" > /tmp/release_notes.md
 
-          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-          cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+            echo \"release_notes<<EOF\" >> $GITHUB_OUTPUT
+            cat /tmp/release_notes.md >> $GITHUB_OUTPUT
+            echo \"EOF\" >> $GITHUB_OUTPUT
+
 
       - name: Update CHANGELOG.md
         run: |
@@ -49,8 +49,8 @@ jobs:
             echo "" >> CHANGELOG.md
           fi
 
-          sed -i "1a \
-$(cat RELEASE_NOTES.md | sed 's/\\//\\\//g')" CHANGELOG.md
+          sed -i "1a\\
+          $(cat /tmp/release_notes.md | sed 's/\\//\\\\/g')" CHANGELOG.md
 
       - name: Commit updated CHANGELOG.md
         run: |
