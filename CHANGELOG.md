@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-homeassistant-api` will be documented in this file
 
+## [v1.4.2] - 2025-12-15
+
+### Documentation
+- : update changelog for v1.4.1
+
+
+All notable changes to `laravel-homeassistant-api` will be documented in this file
+
 ## [v1.4.1] - 2025-12-15
 
 ### Documentation
