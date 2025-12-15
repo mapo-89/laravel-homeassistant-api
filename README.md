@@ -86,6 +86,21 @@ $homeassistantApi->config()->check();
 $homeassistantApi->states()->all(); // adapt this to your use case
 ```
 
+
+---
+
+### 🧩 Template API
+
+More information about [templating](https://www.home-assistant.io/docs/configuration/templating)
+
+```php
+// renders a template
+$homeassistantApi->template()->render(<<<'TEMPLATE'
+    Paulus is at {{ states('device_tracker.paulus') }}!
+    TEMPLATE
+);
+```
+
 ---
 
 ### 🔔 Events API

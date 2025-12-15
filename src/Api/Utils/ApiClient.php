@@ -43,7 +43,7 @@ class ApiClient
         return $config;
     }
 
-    public function execute(string $httpMethod, string $endpoint = '', array $parameters = []): array
+    public function execute(string $httpMethod, string $endpoint = '', array $parameters = [], bool $asArray = true): mixed
     {
         $allowedMethods = ['get','post','put','patch','delete'];
         $httpMethod = strtolower($httpMethod);
@@ -71,32 +71,32 @@ class ApiClient
             );
         }
 
-        return $response->json();
+        return $asArray ? $response->json() : $response->body();
     }
 
     // ========================= base methods ======================================
-    public function _get(?string $url = null, array $parameters = []): array
+    public function _get(?string $url = null, array $parameters = [], bool $asArray = true): mixed
     {
-        return $this->execute('get', $url ?? '', $parameters);
+        return $this->execute('get', $url ?? '', $parameters, $asArray);
     }
 
-    public function _post(?string $url = null, array $parameters = []): array
+    public function _post(?string $url = null, array $parameters = [], bool $asArray = true): mixed
     {
-        return $this->execute('post', $url ?? '', $parameters);
+        return $this->execute('post', $url ?? '', $parameters, $asArray);
     }
 
-    public function _put(?string $url = null, array $parameters = []): array
+    public function _put(?string $url = null, array $parameters = [], bool $asArray = true): mixed
     {
-        return $this->execute('put', $url ?? '', $parameters);
+        return $this->execute('put', $url ?? '', $parameters, $asArray);
     }
 
-    public function _patch(?string $url = null, array $parameters = []): array
+    public function _patch(?string $url = null, array $parameters = [], bool $asArray = true): mixed
     {
-        return $this->execute('patch', $url ?? '', $parameters);
+        return $this->execute('patch', $url ?? '', $parameters, $asArray);
     }
 
-    public function _delete(?string $url = null, array $parameters = []): array
+    public function _delete(?string $url = null, array $parameters = [], bool $asArray = true): mixed
     {
-        return $this->execute('delete', $url ?? '', $parameters);
+        return $this->execute('delete', $url ?? '', $parameters, $asArray);
     }
 }

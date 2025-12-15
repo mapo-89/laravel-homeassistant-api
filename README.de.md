@@ -59,7 +59,7 @@ $homeassistantApi = HomeassistantApi::make($config);
 
 ---
 
-### 🔄 System API
+### 🖥️ System API
 
 ```php
 // Prüfen, ob die API funktioniert
@@ -68,7 +68,7 @@ $homeassistantApi->system()->verify();
 
 ---
 
-### 🔄 Config API
+### ⚙️ Config API
 
 ```php
 // Gebe aktuelle Konfiguration aus
@@ -84,6 +84,20 @@ $homeassistantApi->config()->check();
 
 ```php
 $homeassistantApi->states()->all(); // passe das an deinen Anwendungsfall an
+```
+
+---
+
+### 🖥️ Template API
+
+Mehr Infos zum [Templatung](https://www.home-assistant.io/docs/configuration/templating)
+
+```php
+// rendert ein Template
+$homeassistantApi->template()->render(<<<'TEMPLATE'
+    Paulus is at {{ states('device_tracker.paulus') }}!
+    TEMPLATE
+);
 ```
 
 ---
