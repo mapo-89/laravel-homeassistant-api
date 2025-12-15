@@ -6,7 +6,7 @@ set -e
 # -------------------------------
 VERSION=${GITHUB_REF_NAME:-v1.4.0}        
 DATE=$(date +'%Y-%m-%d')
-ROOT_CHANGELOG="../../CHANGELOG.md" 
+ROOT_CHANGELOG="CHANGELOG.md" 
 
 # Letztes Tag ermitteln
 PREVIOUS_TAG=$(git tag --sort=-creatordate | grep -v "^$VERSION$" | head -n 1)
