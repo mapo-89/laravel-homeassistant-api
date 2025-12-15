@@ -57,6 +57,29 @@ $config = [
 $homeassistantApi = HomeassistantApi::make($config);
 ```
 
+---
+
+### 🔄 System API
+
+```php
+// Prüfen, ob die API funktioniert
+$homeassistantApi->system()->verify();
+```
+
+---
+
+### 🔄 Config API
+
+```php
+// Gebe aktuelle Konfiguration aus
+$homeassistantApi->config()->get();
+
+// Prüfe aktuelle Konfiguration
+$homeassistantApi->config()->check();
+```
+
+---
+
 ### 🔄 States API
 
 ```php
