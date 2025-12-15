@@ -77,5 +77,5 @@ done
 
 TMP=$(mktemp)
 echo -e "$CHANGELOG" > "$TMP"
-tail -n +3 "$ROOT_CHANGELOG" >> "$TMP"  # alten Changelog anhängen
+tail -n +4 "$ROOT_CHANGELOG" >> "$TMP"  # alten Changelog anhängen
 mv "$TMP" "$ROOT_CHANGELOG"
