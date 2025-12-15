@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   release:
+    if: github.event_name == 'push' && github.ref_type == 'tag' && github.actor != 'github-actions[bot]'
     name: Create GitHub Release & Changelog
     runs-on: ubuntu-latest
 
@@ -19,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate release notes from commits
+      - name: Generate CHANGELOG.md
         id: changelog
         run: |
             chmod +x .github/scripts/generate_changelog.sh
@@ -28,7 +29,10 @@ jobs:
             git config user.email "github-actions@github.com"
             git add CHANGELOG.md
             git commit -m "📝 Docs:: update changelog for $GITHUB_REF_NAME" || echo "No changes to commit"
+            git tag -f "$GITHUB_REF_NAME"
             git push origin HEAD:main
+            git push origin "$GITHUB_REF_NAME" --force
+
 
       - name: Generate Release Notes
         id: release_notes

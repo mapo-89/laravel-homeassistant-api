@@ -11,8 +11,6 @@ All notable changes to `laravel-homeassistant-api` will be documented in this fi
 - update release-script
 - update release workflow
 
-
-
 ## [v1.4.0] - 2025-12-15
 
 ### Added
