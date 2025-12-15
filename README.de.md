@@ -40,10 +40,13 @@ php artisan vendor:publish --provider="Mapo89\LaravelHomeassistantApi\Homeassist
 
 ## ⚙️ Verwendung
 
+> 📚 Die vollständige API-Dokumentation findest du hier: [home-assistant.io](https://developers.home-assistant.io/docs/api/rest)
+
+### Initialisierung
+
 ```php
 use Mapo89\LaravelHomeassistantApi\Facades\HomeassistantApi;
 
-// Beispiel: Abrufen von allen States
 $homeassistantApi = HomeassistantApi::make();
 
 //Alternative mit dynamischer COnfig
@@ -52,10 +55,66 @@ $config = [
     'token' => 'your_long_lived_token'
 ];
 $homeassistantApi = HomeassistantApi::make($config);
+```
+
+### 🔄 States API
+
+```php
 $homeassistantApi->states()->all(); // passe das an deinen Anwendungsfall an
 ```
 
-> 📚 Die vollständige API-Dokumentation findest du hier: [home-assistant.io](https://developers.home-assistant.io/docs/api/rest)
+---
+
+### 🔔 Events API
+
+Interaktion mit dem Home Assistant Event-System.
+
+```php
+// Alle verfügbaren Events abrufen
+$events = $homeassistantApi->events()->all();
+
+// Custom Event auslösen
+$homeassistantApi->events()->fire('my_custom_event', [
+    'source' => 'laravel',
+    'user_id' => 123,
+]);
+```
+
+**Unterstützte Endpunkte**
+- `GET /api/events`
+- `POST /api/events/{event_type}`
+
+---
+
+### 🕒 History API 
+
+Zugriff auf historische State-Änderungen von Entities.
+
+```php
+// Gruppierte Historie nach Entity
+$history = $homeassistantApi->history()->get(
+    start: now()->subHours(12),
+    entityIds: ['light.kitchen', 'sensor.temperature'],
+    significantOnly: true
+);
+
+// Zugriff pro Entity
+$history['light.kitchen']; // HistoryState[]
+```
+
+**Flache Ausgabe (ideal für Charts & Analytics)**
+
+```php
+$flat = $homeassistantApi->history()->flat(
+    start: now()->subHours(6),
+    entityIds: ['light.kitchen', 'sensor.temperature'],
+);
+
+```
+
+**Unterstützte Endpunkte**
+- `GET /api/history/period`
+- `POST /api/history/period/{timestamp}`
 
 ---
 
