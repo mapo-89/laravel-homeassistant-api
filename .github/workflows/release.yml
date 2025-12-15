@@ -23,7 +23,7 @@ jobs:
         id: changelog
         run: |
             chmod +x .github/scripts/generate_changelog.sh
-            ./github/scripts/generate_changelog.sh
+            .github/scripts/generate_changelog.sh
             git config user.name "github-actions"
             git config user.email "github-actions@github.com"
             git add CHANGELOG.md
@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
             chmod +x .github/scripts/generate_release_notes.sh
-            ./github/scripts/generate_release_notes.sh > release_notes.txt
+            .github/scripts/generate_release_notes.sh > release_notes.txt
             echo "release_notes<<EOF" >> $GITHUB_OUTPUT
             cat release_notes.txt >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
