@@ -80,6 +80,19 @@ $homeassistantApi->config()->check();
 
 ---
 
+
+### Set the external URL
+
+```php
+$homeassistantApi->config()->setExternalUrl('https://customer.example.com');
+```
+
+This authenticates through the Home Assistant WebSocket API, updates only
+`external_url`, and reads the configuration back to verify it. The token must
+belong to a Home Assistant administrator. TLS verification stays enabled, and
+connection and response times are bounded. Use `HomeassistantApi::make($config)`
+for separate URLs and tokens per installation.
+
 ### 🔄 States API
 
 ```php

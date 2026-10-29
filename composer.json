@@ -1,6 +1,6 @@
 {
     "name": "mapo-89/laravel-homeassistant-api",
-    "description": "Laravel package to interact with Home Assistant REST API.",
+    "description": "Laravel package to interact with Home Assistant REST and WebSocket APIs.",
     "authors": [
         {
             "name": "Manuel Postler",
@@ -11,7 +11,8 @@
     "homepage": "https://github.com/mapo-89/laravel-homeassistant-api",
     "license": "MIT",
     "require": {
-        "php": ">=8.2"
+        "php": ">=8.2",
+        "phrity/websocket": "^4.1"
     },
     "autoload": {
         "psr-4": {
@@ -27,5 +28,11 @@
                 "HomeassistantApi": "Mapo89\\LaravelHomeassistantApi\\Facades\\HomeassistantApi"
             }
         }
-    }    
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5|^11.0|^12.0|^13.0"
+    },
+    "scripts": {
+        "test": "phpunit --bootstrap vendor/autoload.php tests"
+    }
 }

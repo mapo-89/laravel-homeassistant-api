@@ -80,6 +80,19 @@ $homeassistantApi->config()->check();
 
 ---
 
+
+### Externe URL setzen
+
+```php
+$homeassistantApi->config()->setExternalUrl('https://kunde.example.com');
+```
+
+Die Methode authentifiziert sich über die WebSocket-API, ändert ausschließlich
+`external_url` und liest den Wert anschließend zur Bestätigung zurück. Der Token
+muss zu einem Home-Assistant-Administrator gehören. TLS-Prüfung bleibt aktiv;
+Verbindungs- und Antwortzeiten sind begrenzt. Mit `HomeassistantApi::make($config)`
+lassen sich URL und Token je Installation separat übergeben.
+
 ### 🔄 States API
 
 ```php
