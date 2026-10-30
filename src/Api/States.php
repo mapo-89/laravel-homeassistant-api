@@ -8,8 +8,8 @@
 
 namespace Mapo89\LaravelHomeassistantApi\Api;
 
-use Illuminate\Support\Facades\Cache;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
+use Mapo89\LaravelHomeassistantApi\Api\Utils\StateCache;
 use Mapo89\LaravelHomeassistantApi\DTOs\State;
 use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
 use Mapo89\LaravelHomeassistantApi\Query\StatesQuery;
@@ -19,13 +19,18 @@ use Mapo89\LaravelHomeassistantApi\Query\StatesQuery;
  *
  * @see https://developers.home-assistant.io/docs/api/rest
  */
-class States extends ApiClient
+class States
 {
     protected ApiClient $client;
 
     public function __construct(ApiClient $client)
     {
         $this->client = $client;
+    }
+
+    public function getConfig(): array
+    {
+        return $this->client->getConfig();
     }
 
     public function __call($method, $arguments)
@@ -49,8 +54,7 @@ class States extends ApiClient
 
             return $states;
         };
-        $cacheKey = 'ha.states.'.hash('sha256', json_encode([rtrim($config['url'], '/'), $config['token']], JSON_THROW_ON_ERROR));
-        $raw = ($config['cache_responses'] ?? true) ? Cache::remember($cacheKey, 5, $fetch) : $fetch();
+        $raw = StateCache::remember($config, $fetch);
 
         return new StatesQuery($raw);
     }
@@ -93,6 +97,7 @@ class States extends ApiClient
         ];
 
         $raw = $this->client->_post('states/'.$entity_id, $payload);
+        StateCache::forget($this->client->getConfig());
 
         return new State($raw);
     }
@@ -107,6 +112,7 @@ class States extends ApiClient
     public function delete(string $entity_id): bool
     {
         $this->client->_delete('states/'.$entity_id);
+        StateCache::forget($this->client->getConfig());
 
         return true; // Wenn keine Exception, war es erfolgreich
     }
