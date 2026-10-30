@@ -57,6 +57,50 @@ class WebSocketClient
         }
     }
 
+    /** @return array<string, mixed> */
+    public function systemState(string $baseUrl, string $token): array
+    {
+        $client = null;
+        $deadline = microtime(true) + 8;
+        try {
+            if ($token === '') {
+                throw new HomeAssistantException('Home Assistant authentication is required.');
+            }
+            $client = $this->createClient($this->socketUrl($baseUrl));
+            $client->connect();
+            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_required') {
+                throw new HomeAssistantException('Unexpected authentication response.');
+            }
+            $client->text(json_encode(['type' => 'auth', 'access_token' => $token], JSON_THROW_ON_ERROR));
+            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_ok') {
+                throw new HomeAssistantException('Home Assistant authentication failed.');
+            }
+            $client->text(json_encode(['id' => 1, 'type' => 'subscribe_system_state'], JSON_THROW_ON_ERROR));
+            $this->result($client, $deadline, 1);
+            $event = $this->read($client, $deadline);
+            $state = $event['event'] ?? null;
+            if (($event['type'] ?? null) !== 'event' || ($event['id'] ?? null) !== 1 || ! is_array($state)
+                || ! is_bool($state['home_assistant_restart_required'] ?? null) || ! is_bool($state['host_reboot_required'] ?? null)) {
+                throw new HomeAssistantException('Invalid system state.');
+            }
+
+            return [
+                'restartRequired' => $state['home_assistant_restart_required'],
+                'rebootRequired' => $state['host_reboot_required'],
+                'sources' => array_values(array_filter(is_array($state['home_assistant_restart_sources'] ?? null) ? $state['home_assistant_restart_sources'] : [], 'is_string')),
+            ];
+        } catch (Throwable) {
+            throw new HomeAssistantException('Home Assistant system state could not be read.');
+        } finally {
+            if ($client !== null) {
+                try {
+                    $client->disconnect();
+                } catch (Throwable) {
+                }
+            }
+        }
+    }
+
     protected function createClient(string $url): Client
     {
         $context = (new Context)->setOptions(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false]]);
