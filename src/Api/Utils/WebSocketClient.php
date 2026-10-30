@@ -19,64 +19,28 @@ class WebSocketClient
     /** @return array<string, mixed> */
     public function setExternalUrl(string $baseUrl, string $token, string $externalUrl): array
     {
-        $socketUrl = $this->socketUrl($baseUrl);
+        $this->socketUrl($baseUrl);
         $this->socketUrl($externalUrl);
         if ($token === '') {
             throw new HomeAssistantException('Home Assistant authentication is required.');
         }
-        $client = null;
-        $deadline = microtime(true) + 8;
-        try {
-            $client = $this->createClient($socketUrl);
-            $client->connect();
-            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_required') {
-                throw new HomeAssistantException('Unexpected Home Assistant authentication response.');
-            }
-            $client->text(json_encode(['type' => 'auth', 'access_token' => $token], JSON_THROW_ON_ERROR));
-            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_ok') {
-                throw new HomeAssistantException('Home Assistant authentication failed.');
-            }
-            $client->text(json_encode(['id' => 1, 'type' => 'config/core/update', 'external_url' => $externalUrl], JSON_THROW_ON_ERROR));
-            $this->result($client, $deadline, 1);
-            $client->text(json_encode(['id' => 2, 'type' => 'get_config'], JSON_THROW_ON_ERROR));
-            $config = $this->result($client, $deadline, 2);
+
+        return $this->authenticated($baseUrl, $token, function (Client $client, float $deadline) use ($externalUrl): array {
+            $this->command($client, $deadline, 1, 'config/core/update', ['external_url' => $externalUrl]);
+            $config = $this->command($client, $deadline, 2, 'get_config');
             if (! is_array($config) || ($config['external_url'] ?? null) !== $externalUrl) {
                 throw new HomeAssistantException('Home Assistant did not confirm the external URL.');
             }
 
             return $config;
-        } catch (Throwable) {
-            throw new HomeAssistantException('Home Assistant external URL could not be configured.');
-        } finally {
-            if ($client !== null) {
-                try {
-                    $client->disconnect();
-                } catch (Throwable) {
-                }
-            }
-        }
+        }, 'Home Assistant external URL could not be configured.');
     }
 
     /** @return array<string, mixed> */
     public function systemState(string $baseUrl, string $token): array
     {
-        $client = null;
-        $deadline = microtime(true) + 8;
-        try {
-            if ($token === '') {
-                throw new HomeAssistantException('Home Assistant authentication is required.');
-            }
-            $client = $this->createClient($this->socketUrl($baseUrl));
-            $client->connect();
-            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_required') {
-                throw new HomeAssistantException('Unexpected authentication response.');
-            }
-            $client->text(json_encode(['type' => 'auth', 'access_token' => $token], JSON_THROW_ON_ERROR));
-            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_ok') {
-                throw new HomeAssistantException('Home Assistant authentication failed.');
-            }
-            $client->text(json_encode(['id' => 1, 'type' => 'subscribe_system_state'], JSON_THROW_ON_ERROR));
-            $this->result($client, $deadline, 1);
+        return $this->authenticated($baseUrl, $token, function (Client $client, float $deadline): array {
+            $this->command($client, $deadline, 1, 'subscribe_system_state');
             $event = $this->read($client, $deadline);
             $state = $event['event'] ?? null;
             if (($event['type'] ?? null) !== 'event' || ($event['id'] ?? null) !== 1 || ! is_array($state)
@@ -89,16 +53,7 @@ class WebSocketClient
                 'rebootRequired' => $state['host_reboot_required'],
                 'sources' => array_values(array_filter(is_array($state['home_assistant_restart_sources'] ?? null) ? $state['home_assistant_restart_sources'] : [], 'is_string')),
             ];
-        } catch (Throwable) {
-            throw new HomeAssistantException('Home Assistant system state could not be read.');
-        } finally {
-            if ($client !== null) {
-                try {
-                    $client->disconnect();
-                } catch (Throwable) {
-                }
-            }
-        }
+        }, 'Home Assistant system state could not be read.');
     }
 
     /**
@@ -113,26 +68,12 @@ class WebSocketClient
         if ($entityIds === []) {
             return [];
         }
-        $client = null;
-        $deadline = microtime(true) + 8;
-        try {
-            if ($token === '') {
-                throw new HomeAssistantException('Home Assistant authentication is required.');
-            }
-            $client = $this->createClient($this->socketUrl($baseUrl));
-            $client->connect();
-            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_required') {
-                throw new HomeAssistantException('Unexpected authentication response.');
-            }
-            $client->text(json_encode(['type' => 'auth', 'access_token' => $token], JSON_THROW_ON_ERROR));
-            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_ok') {
-                throw new HomeAssistantException('Home Assistant authentication failed.');
-            }
+
+        return $this->authenticated($baseUrl, $token, function (Client $client, float $deadline) use ($entityIds): array {
             $entries = [];
             foreach (array_chunk($entityIds, 20) as $index => $batch) {
                 $id = $index + 1;
-                $client->text(json_encode(['id' => $id, 'type' => 'config/entity_registry/get_entries', 'entity_ids' => $batch], JSON_THROW_ON_ERROR));
-                $result = $this->result($client, $deadline, $id);
+                $result = $this->command($client, $deadline, $id, 'config/entity_registry/get_entries', ['entity_ids' => $batch]);
                 if (! is_array($result)) {
                     throw new HomeAssistantException('Invalid entity registry.');
                 }
@@ -145,26 +86,15 @@ class WebSocketClient
             }
 
             return $entries;
-        } catch (Throwable) {
-            throw new HomeAssistantException('Home Assistant update entity registry could not be read.');
-        } finally {
-            if ($client !== null) {
-                try {
-                    $client->disconnect();
-                } catch (Throwable) {
-                }
-            }
-        }
+        }, 'Home Assistant update entity registry could not be read.');
     }
 
     /** @return array{userId: string, tokenId: string, type: string, clientName: string|null} */
     public function accessTokenInfo(string $baseUrl, string $token): array
     {
         return $this->authenticated($baseUrl, $token, function (Client $client, float $deadline): array {
-            $client->text(json_encode(['id' => 1, 'type' => 'auth/current_user'], JSON_THROW_ON_ERROR));
-            $user = $this->result($client, $deadline, 1);
-            $client->text(json_encode(['id' => 2, 'type' => 'auth/refresh_tokens'], JSON_THROW_ON_ERROR));
-            $tokens = $this->result($client, $deadline, 2);
+            $user = $this->command($client, $deadline, 1, 'auth/current_user');
+            $tokens = $this->command($client, $deadline, 2, 'auth/refresh_tokens');
             if (! is_array($user) || ! is_string($user['id'] ?? null) || $user['id'] === '' || ! is_array($tokens)) {
                 throw new HomeAssistantException('Invalid token information.');
             }
@@ -184,8 +114,7 @@ class WebSocketClient
         }
 
         return $this->authenticated($baseUrl, $token, function (Client $client, float $deadline) use ($clientName, $lifespan): string {
-            $client->text(json_encode(['id' => 1, 'type' => 'auth/long_lived_access_token', 'client_name' => $clientName, 'lifespan' => $lifespan], JSON_THROW_ON_ERROR));
-            $result = $this->result($client, $deadline, 1);
+            $result = $this->command($client, $deadline, 1, 'auth/long_lived_access_token', ['client_name' => $clientName, 'lifespan' => $lifespan]);
             if (! is_string($result) || strlen($result) < 20 || strlen($result) > 4000) {
                 throw new HomeAssistantException('Invalid generated token.');
             }
@@ -200,13 +129,16 @@ class WebSocketClient
             throw new HomeAssistantException('Invalid token identifier.');
         }
         $this->authenticated($baseUrl, $token, function (Client $client, float $deadline) use ($refreshTokenId): void {
-            $client->text(json_encode(['id' => 1, 'type' => 'auth/delete_refresh_token', 'refresh_token_id' => $refreshTokenId], JSON_THROW_ON_ERROR));
-            $this->result($client, $deadline, 1);
+            $this->command($client, $deadline, 1, 'auth/delete_refresh_token', ['refresh_token_id' => $refreshTokenId]);
         });
     }
 
-    private function authenticated(string $baseUrl, string $token, callable $operation): mixed
-    {
+    private function authenticated(
+        string $baseUrl,
+        string $token,
+        callable $operation,
+        string $failureMessage = 'Home Assistant token operation could not be completed.'
+    ): mixed {
         $client = null;
         $deadline = microtime(true) + 8;
         try {
@@ -225,7 +157,7 @@ class WebSocketClient
 
             return $operation($client, $deadline);
         } catch (Throwable) {
-            throw new HomeAssistantException('Home Assistant token operation could not be completed.');
+            throw new HomeAssistantException($failureMessage);
         } finally {
             if ($client !== null) {
                 try {
@@ -278,8 +210,9 @@ class WebSocketClient
         throw new HomeAssistantException('Invalid or timed out Home Assistant response.');
     }
 
-    private function result(Client $client, float $deadline, int $id): mixed
+    private function command(Client $client, float $deadline, int $id, string $type, array $data = []): mixed
     {
+        $client->text(json_encode(['id' => $id, 'type' => $type] + $data, JSON_THROW_ON_ERROR));
         $response = $this->read($client, $deadline);
         if (($response['type'] ?? null) !== 'result' || ($response['id'] ?? null) !== $id || ($response['success'] ?? null) !== true) {
             throw new HomeAssistantException('Home Assistant command was not confirmed.');
