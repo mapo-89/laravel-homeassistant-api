@@ -376,3 +376,23 @@ composer test
 Die Integrationstests prüfen Konfigurations-Merging, beide Publish-Tags,
 die Registrierung von `ha:call` sowie die gemeinsame Service- und Fassadeninstanz.
 Die WebSocket-Tests verwenden Mocks und benötigen keine laufende Home-Assistant-Instanz.
+
+## Releases und Abhängigkeitsupdates
+
+Commit-Kategorien und Release-Regeln folgen dem [gemeinsamen Release-Standard](.release/README.md).
+Feature-Branches starten von `main` und werden einzeln in `release/X.Y.Z` gesquasht.
+Direkte kategorisierte Commits auf dem Release-Branch sind ebenfalls erlaubt.
+Normale Commits ändern weder Versionen noch Changelog. Erst zur Finalisierung
+wird `node .release/branches.mjs prepare` gesammelt ausgeführt.
+Der vorbereitete Release gelangt über einen geprüften Pull Request mit einem
+Merge-Commit `🚀 Release: X.Y.Z` nach `main`. Die Veröffentlichung setzt erfolgreiche
+CI für genau diesen Merge-Commit voraus; bestehende Tags bleiben unverändert.
+Nach erfolgreicher Veröffentlichung und Prüfung wird der vollständig integrierte
+Release-Branch entfernt. Normale Pushes veröffentlichen keinen Release.
+
+Dependabot schlägt montags Updates für Composer und GitHub Actions vor.
+Minor- und Patch-Updates werden je Ökosystem gruppiert, Major-Updates separat geprüft.
+Ausgewählte Update-PRs werden auf den aktiven Release-Branch umgestellt, geprüft
+und dort per Squash-Merge integriert. Bot-PRs werden nicht automatisch gemergt
+und autorisieren keinen Release. Die Konfiguration wird nach Übernahme nach `main`
+aktiv; gegebenenfalls müssen Versionsupdates in GitHub aktiviert werden.
