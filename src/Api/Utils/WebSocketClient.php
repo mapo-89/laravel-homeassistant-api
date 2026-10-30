@@ -157,6 +157,85 @@ class WebSocketClient
         }
     }
 
+    /** @return array{userId: string, tokenId: string, type: string, clientName: string|null} */
+    public function accessTokenInfo(string $baseUrl, string $token): array
+    {
+        return $this->authenticated($baseUrl, $token, function (Client $client, float $deadline): array {
+            $client->text(json_encode(['id' => 1, 'type' => 'auth/current_user'], JSON_THROW_ON_ERROR));
+            $user = $this->result($client, $deadline, 1);
+            $client->text(json_encode(['id' => 2, 'type' => 'auth/refresh_tokens'], JSON_THROW_ON_ERROR));
+            $tokens = $this->result($client, $deadline, 2);
+            if (! is_array($user) || ! is_string($user['id'] ?? null) || $user['id'] === '' || ! is_array($tokens)) {
+                throw new HomeAssistantException('Invalid token information.');
+            }
+            foreach ($tokens as $entry) {
+                if (is_array($entry) && ($entry['is_current'] ?? null) === true && is_string($entry['id'] ?? null) && $entry['id'] !== '' && is_string($entry['type'] ?? null)) {
+                    return ['userId' => $user['id'], 'tokenId' => $entry['id'], 'type' => $entry['type'], 'clientName' => is_string($entry['client_name'] ?? null) ? $entry['client_name'] : null];
+                }
+            }
+            throw new HomeAssistantException('Current token could not be identified.');
+        });
+    }
+
+    public function createLongLivedToken(string $baseUrl, string $token, string $clientName, int $lifespan = 365): string
+    {
+        if ($clientName === '' || strlen($clientName) > 128 || $lifespan < 1 || $lifespan > 3650) {
+            throw new HomeAssistantException('Invalid token lifetime or client name.');
+        }
+
+        return $this->authenticated($baseUrl, $token, function (Client $client, float $deadline) use ($clientName, $lifespan): string {
+            $client->text(json_encode(['id' => 1, 'type' => 'auth/long_lived_access_token', 'client_name' => $clientName, 'lifespan' => $lifespan], JSON_THROW_ON_ERROR));
+            $result = $this->result($client, $deadline, 1);
+            if (! is_string($result) || strlen($result) < 20 || strlen($result) > 4000) {
+                throw new HomeAssistantException('Invalid generated token.');
+            }
+
+            return $result;
+        });
+    }
+
+    public function deleteRefreshToken(string $baseUrl, string $token, string $refreshTokenId): void
+    {
+        if (! preg_match('/\A[a-zA-Z0-9-]{1,128}\z/D', $refreshTokenId)) {
+            throw new HomeAssistantException('Invalid token identifier.');
+        }
+        $this->authenticated($baseUrl, $token, function (Client $client, float $deadline) use ($refreshTokenId): void {
+            $client->text(json_encode(['id' => 1, 'type' => 'auth/delete_refresh_token', 'refresh_token_id' => $refreshTokenId], JSON_THROW_ON_ERROR));
+            $this->result($client, $deadline, 1);
+        });
+    }
+
+    private function authenticated(string $baseUrl, string $token, callable $operation): mixed
+    {
+        $client = null;
+        $deadline = microtime(true) + 8;
+        try {
+            if ($token === '') {
+                throw new HomeAssistantException('Authentication is required.');
+            }
+            $client = $this->createClient($this->socketUrl($baseUrl));
+            $client->connect();
+            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_required') {
+                throw new HomeAssistantException('Unexpected authentication response.');
+            }
+            $client->text(json_encode(['type' => 'auth', 'access_token' => $token], JSON_THROW_ON_ERROR));
+            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_ok') {
+                throw new HomeAssistantException('Authentication failed.');
+            }
+
+            return $operation($client, $deadline);
+        } catch (Throwable) {
+            throw new HomeAssistantException('Home Assistant token operation could not be completed.');
+        } finally {
+            if ($client !== null) {
+                try {
+                    $client->disconnect();
+                } catch (Throwable) {
+                }
+            }
+        }
+    }
+
     protected function createClient(string $url): Client
     {
         $context = (new Context)->setOptions(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false]]);
