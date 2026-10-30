@@ -40,7 +40,7 @@ Before submitting a pull request:
 
 If the project maintainer has any additional requirements, you will find them listed here.
 
-- **[PSR-2 Coding Standard](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md)** - The easiest way to apply the conventions is to install [PHP Code Sniffer](https://pear.php.net/package/PHP_CodeSniffer).
+- **Coding style** - Use Laravel Pint with the committed Laravel preset (`composer format`). CI checks formatting without changing files.
 
 - **Add tests!** - Your patch won't be accepted if it doesn't have tests.
 
@@ -51,6 +51,20 @@ If the project maintainer has any additional requirements, you will find them li
 - **One pull request per feature** - If you want to do more than one thing, send multiple pull requests.
 
 - **Send coherent history** - Make sure each individual commit in your pull request is meaningful. If you had to make multiple intermediate commits while developing, please [squash them](https://www.git-scm.com/book/en/v2/Git-Tools-Rewriting-History#Changing-Multiple-Commit-Messages) before submitting.
+
+## Quality checks
+
+Install development dependencies with `composer install`, then run `composer qa`
+before submitting a pull request. It validates Composer metadata and PSR-4
+loading, checks Pint formatting, runs PHPStan with Larastan at level 6 over `src/`,
+runs the PHP tests, and audits installed dependencies for security advisories.
+Static analysis targets PHP 8.2; CI also tests the supported PHP/Laravel versions.
+Fix findings in code or precise type annotations rather than adding a baseline.
+
+Run individual checks with `composer check-style`, `composer analyse`,
+`composer test`, or `composer audit`. Apply PHP formatting with `composer format`.
+The dependency audit requires network access. Generated tool caches and the
+package's local Composer lock file are not committed.
 
 ## Commit messages and release notes
 

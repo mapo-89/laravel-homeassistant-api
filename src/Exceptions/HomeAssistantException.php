@@ -1,4 +1,5 @@
 <?php
+
 namespace Mapo89\LaravelHomeassistantApi\Exceptions;
 
 use Exception;

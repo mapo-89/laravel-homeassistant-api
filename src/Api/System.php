@@ -7,11 +7,15 @@ use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
 class System
 {
     protected ApiClient $client;
+
     public function __construct(ApiClient $client)
     {
         $this->client = $client;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function verify(): array
     {
         return $this->client->_get();

@@ -59,7 +59,7 @@ class WebSocketClient
     /**
      * Read only the integration identifiers of the requested update entities.
      *
-     * @param  list<string>  $entityIds
+     * @param  list<mixed>  $entityIds
      * @return array<string, array{platform: string, unique_id: string}>
      */
     public function updateEntityRegistry(string $baseUrl, string $token, array $entityIds): array
@@ -147,11 +147,13 @@ class WebSocketClient
             }
             $client = $this->createClient($this->socketUrl($baseUrl));
             $client->connect();
-            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_required') {
+            $challenge = $this->read($client, $deadline);
+            if (($challenge['type'] ?? null) !== 'auth_required') {
                 throw new HomeAssistantException('Unexpected authentication response.');
             }
             $client->text(json_encode(['type' => 'auth', 'access_token' => $token], JSON_THROW_ON_ERROR));
-            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_ok') {
+            $authentication = $this->read($client, $deadline);
+            if (($authentication['type'] ?? null) !== 'auth_ok') {
                 throw new HomeAssistantException('Authentication failed.');
             }
 
@@ -189,7 +191,11 @@ class WebSocketClient
         return ($parts['scheme'] === 'https' ? 'wss' : 'ws').'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '').'/api/websocket';
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array<string, mixed>
+     *
+     * @phpstan-impure
+     */
     private function read(Client $client, float $deadline): array
     {
         for ($attempt = 0; $attempt < 16 && microtime(true) < $deadline; $attempt++) {
@@ -210,6 +216,9 @@ class WebSocketClient
         throw new HomeAssistantException('Invalid or timed out Home Assistant response.');
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
     private function command(Client $client, float $deadline, int $id, string $type, array $data = []): mixed
     {
         $client->text(json_encode(['id' => $id, 'type' => $type] + $data, JSON_THROW_ON_ERROR));

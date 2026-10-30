@@ -1,4 +1,5 @@
 <?php
+
 /*
  * HomeAssistantApiServiceProvider.php
  * @author Manuel Postler <info@postler.de>

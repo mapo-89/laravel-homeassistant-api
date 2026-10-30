@@ -2,13 +2,17 @@
 
 namespace Mapo89\LaravelHomeassistantApi\Query;
 
-use Mapo89\LaravelHomeassistantApi\DTOs\State;
 use Illuminate\Support\Collection;
+use Mapo89\LaravelHomeassistantApi\DTOs\State;
 
 class StatesQuery
 {
+    /** @var Collection<int, covariant array<string, mixed>> */
     private Collection $states;
 
+    /**
+     * @param  list<array<string, mixed>>  $rawStates
+     */
     public function __construct(array $rawStates)
     {
         $this->states = collect($rawStates);
@@ -17,7 +21,7 @@ class StatesQuery
     public function whereDomain(string $domain): self
     {
         $this->states = $this->states->filter(
-            fn ($state) => str_starts_with($state['entity_id'], $domain . '.')
+            fn ($state): bool => str_starts_with($state['entity_id'], $domain.'.')
         );
 
         return $this;
@@ -26,16 +30,19 @@ class StatesQuery
     public function whereState(string $state): self
     {
         $this->states = $this->states->filter(
-            fn ($item) => $item['state'] === $state
+            fn ($item): bool => $item['state'] === $state
         );
 
         return $this;
     }
 
+    /**
+     * @param  list<string>  $entityIds
+     */
     public function whereEntityIds(array $entityIds): self
     {
         $this->states = $this->states->filter(
-            fn ($item) => in_array($item['entity_id'], $entityIds, true)
+            fn ($item): bool => in_array($item['entity_id'], $entityIds, true)
         );
 
         return $this;
@@ -44,12 +51,15 @@ class StatesQuery
     public function whereAttribute(string $key, mixed $value): self
     {
         $this->states = $this->states->filter(
-            fn ($item) => ($item['attributes'][$key] ?? null) === $value
+            fn ($item): bool => ($item['attributes'][$key] ?? null) === $value
         );
 
         return $this;
     }
 
+    /**
+     * @return list<State>
+     */
     public function get(): array
     {
         return $this->states

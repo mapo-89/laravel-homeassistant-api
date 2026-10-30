@@ -14,6 +14,9 @@ class Config
         $this->client = $client;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function get(): array
     {
         return $this->client->_get('config');
@@ -27,6 +30,9 @@ class Config
         return (new WebSocketClient)->setExternalUrl($config['url'], $config['token'], $externalUrl);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function check(): array
     {
         return $this->client->_post('config/core/check_config');

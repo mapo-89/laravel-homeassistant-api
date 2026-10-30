@@ -7,6 +7,7 @@ use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
 class Templates
 {
     protected ApiClient $client;
+
     public function __construct(ApiClient $client)
     {
         $this->client = $client;

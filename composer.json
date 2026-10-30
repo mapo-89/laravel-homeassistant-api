@@ -32,10 +32,25 @@
         }
     },
     "require-dev": {
+        "larastan/larastan": "^3.10",
+        "laravel/pint": "^1.27",
         "orchestra/testbench": "^10.0|^11.0",
         "phpunit/phpunit": "^11.0|^12.0|^13.0"
     },
     "scripts": {
-        "test": "phpunit --bootstrap vendor/autoload.php tests"
+        "test": "phpunit --bootstrap vendor/autoload.php tests",
+        "check-style": "pint --test",
+        "format": "pint",
+        "analyse": "phpstan analyse --memory-limit=768M",
+        "check-autoload": "@composer dump-autoload --optimize --strict-psr --no-scripts",
+        "qa": [
+            "@check-composer",
+            "@check-autoload",
+            "@check-style",
+            "@analyse",
+            "@test",
+            "@composer audit"
+        ],
+        "check-composer": "@composer validate --strict"
     }
 }
