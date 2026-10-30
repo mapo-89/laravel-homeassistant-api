@@ -1,4 +1,5 @@
 <?php
+
 /*
  * States.php
  * @author Manuel Postler <info@postler.de>
@@ -7,11 +8,12 @@
 
 namespace Mapo89\LaravelHomeassistantApi\Api;
 
+use Illuminate\Support\Facades\Cache;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
 use Mapo89\LaravelHomeassistantApi\DTOs\State;
 use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
 use Mapo89\LaravelHomeassistantApi\Query\StatesQuery;
-use Illuminate\Support\Facades\Cache;
+
 /**
  * Homeassistant REST Api
  *
@@ -33,11 +35,22 @@ class States extends ApiClient
 
     public function query(): StatesQuery
     {
-        $raw = Cache::remember(
-            'ha.states',
-            now()->addSeconds(5),
-            fn () => $this->client->_get('states')
-        );
+        $config = $this->client->getConfig();
+        $fetch = function (): array {
+            $states = $this->client->_get('states');
+            if (! is_array($states) || ! array_is_list($states)) {
+                throw new HomeAssistantException('Home Assistant returned invalid states.');
+            }
+            foreach ($states as $state) {
+                if (! is_array($state) || ! is_string($state['entity_id'] ?? null) || ! is_string($state['state'] ?? null) || ! is_array($state['attributes'] ?? [])) {
+                    throw new HomeAssistantException('Home Assistant returned invalid states.');
+                }
+            }
+
+            return $states;
+        };
+        $cacheKey = 'ha.states.'.hash('sha256', json_encode([rtrim($config['url'], '/'), $config['token']], JSON_THROW_ON_ERROR));
+        $raw = ($config['cache_responses'] ?? true) ? Cache::remember($cacheKey, 5, $fetch) : $fetch();
 
         return new StatesQuery($raw);
     }
@@ -57,14 +70,11 @@ class States extends ApiClient
 
     /**
      * Return a single state.
-     *
-     * @param $entity_id
-     * @return State
      */
-    public function get($entity_id): State 
+    public function get($entity_id): State
     {
         return new State(
-            $this->client->_get('states/' . $entity_id)
+            $this->client->_get('states/'.$entity_id)
         );
     }
 
@@ -73,20 +83,17 @@ class States extends ApiClient
     /**
      * Create or update a state.
      *
-     * @param string $entity_id
-     * @param string $state
-     * @param array $attributes
-     * @return State
      * @throws HomeAssistantException
      */
     public function createOrUpdate(string $entity_id, string $state, array $attributes = []): State
     {
         $payload = [
             'state' => $state,
-            'attributes' => $attributes
+            'attributes' => $attributes,
         ];
 
-        $raw = $this->client->_post('states/' . $entity_id, $payload);
+        $raw = $this->client->_post('states/'.$entity_id, $payload);
+
         return new State($raw);
     }
 
@@ -95,13 +102,12 @@ class States extends ApiClient
     /**
      * Delete a custom state.
      *
-     * @param string $entity_id
-     * @return bool
      * @throws HomeAssistantException
      */
     public function delete(string $entity_id): bool
     {
-        $this->client->_delete('states/' . $entity_id);
+        $this->client->_delete('states/'.$entity_id);
+
         return true; // Wenn keine Exception, war es erfolgreich
     }
 }

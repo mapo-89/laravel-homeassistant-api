@@ -2,14 +2,13 @@
 
 namespace Mapo89\LaravelHomeassistantApi\Api\Utils;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Mapo89\LaravelHomeassistantApi\Exceptions\{
-    HomeAssistantException,
-    UnauthorizedException,
-    EntityNotFoundException,
-    ServiceCallFailedException
-};
+use Mapo89\LaravelHomeassistantApi\Exceptions\EntityNotFoundException;
+use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
+use Mapo89\LaravelHomeassistantApi\Exceptions\ServiceCallFailedException;
+use Mapo89\LaravelHomeassistantApi\Exceptions\UnauthorizedException;
 
 class ApiClient
 {
@@ -23,10 +22,11 @@ class ApiClient
     private function normalizeBaseUrl(string $url): string
     {
         $url = rtrim($url, '/');
-        if (!Str::endsWith($url, '/api')) {
+        if (! Str::endsWith($url, '/api')) {
             $url .= '/api';
         }
-        return $url . '/';
+
+        return $url.'/';
     }
 
     public function getConfig(): array
@@ -36,7 +36,7 @@ class ApiClient
             'token' => config('homeassistant-api.token'),
         ];
 
-        if (!isset($config['url'], $config['token'])) {
+        if (! isset($config['url'], $config['token'])) {
             throw new \InvalidArgumentException("Config must include 'url' and 'token'");
         }
 
@@ -45,9 +45,9 @@ class ApiClient
 
     public function execute(string $httpMethod, string $endpoint = '', array $parameters = [], bool $asArray = true): mixed
     {
-        $allowedMethods = ['get','post','put','patch','delete'];
+        $allowedMethods = ['get', 'post', 'put', 'patch', 'delete'];
         $httpMethod = strtolower($httpMethod);
-        if (!in_array($httpMethod, $allowedMethods)) {
+        if (! in_array($httpMethod, $allowedMethods)) {
             throw new \InvalidArgumentException("Invalid HTTP method: {$httpMethod}");
         }
 
@@ -55,19 +55,26 @@ class ApiClient
         $baseUrl = $this->normalizeBaseUrl($config['url']);
         $apiToken = $config['token'];
 
-        $response = Http::withToken($apiToken)->$httpMethod("{$baseUrl}{$endpoint}", $parameters);
+        try {
+            $response = Http::withToken($apiToken)->acceptJson()->withoutRedirecting()
+                ->connectTimeout((float) ($config['connect_timeout'] ?? 3))
+                ->timeout((float) ($config['timeout'] ?? 8))
+                ->$httpMethod("{$baseUrl}{$endpoint}", $parameters);
+        } catch (ConnectionException) {
+            throw new HomeAssistantException('Home Assistant could not be reached.');
+        }
 
         if ($response->status() === 401) {
-            throw new UnauthorizedException("Unauthorized: Check your token");
+            throw new UnauthorizedException('Unauthorized: Check your token', 401);
         }
 
         if ($response->status() === 404) {
-            throw new EntityNotFoundException("Entity not found: {$endpoint}");
+            throw new EntityNotFoundException("Entity not found: {$endpoint}", 404);
         }
 
-        if ($response->status() >= 400) {
+        if (! $response->successful()) {
             throw new ServiceCallFailedException(
-                "Request failed ({$response->status()}): " . $response->body()
+                "Home Assistant returned HTTP {$response->status()}.", $response->status()
             );
         }
 
