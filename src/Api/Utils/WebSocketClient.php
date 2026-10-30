@@ -101,6 +101,62 @@ class WebSocketClient
         }
     }
 
+    /**
+     * Read only the integration identifiers of the requested update entities.
+     *
+     * @param  list<string>  $entityIds
+     * @return array<string, array{platform: string, unique_id: string}>
+     */
+    public function updateEntityRegistry(string $baseUrl, string $token, array $entityIds): array
+    {
+        $entityIds = array_values(array_unique(array_filter($entityIds, fn ($id): bool => is_string($id) && preg_match('/^update\.[a-z0-9_]+$/D', $id) === 1)));
+        if ($entityIds === []) {
+            return [];
+        }
+        $client = null;
+        $deadline = microtime(true) + 8;
+        try {
+            if ($token === '') {
+                throw new HomeAssistantException('Home Assistant authentication is required.');
+            }
+            $client = $this->createClient($this->socketUrl($baseUrl));
+            $client->connect();
+            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_required') {
+                throw new HomeAssistantException('Unexpected authentication response.');
+            }
+            $client->text(json_encode(['type' => 'auth', 'access_token' => $token], JSON_THROW_ON_ERROR));
+            if (($this->read($client, $deadline)['type'] ?? null) !== 'auth_ok') {
+                throw new HomeAssistantException('Home Assistant authentication failed.');
+            }
+            $entries = [];
+            foreach (array_chunk($entityIds, 20) as $index => $batch) {
+                $id = $index + 1;
+                $client->text(json_encode(['id' => $id, 'type' => 'config/entity_registry/get_entries', 'entity_ids' => $batch], JSON_THROW_ON_ERROR));
+                $result = $this->result($client, $deadline, $id);
+                if (! is_array($result)) {
+                    throw new HomeAssistantException('Invalid entity registry.');
+                }
+                foreach ($batch as $entityId) {
+                    $entry = $result[$entityId] ?? null;
+                    if (is_array($entry) && is_string($entry['platform'] ?? null) && is_string($entry['unique_id'] ?? null)) {
+                        $entries[$entityId] = ['platform' => $entry['platform'], 'unique_id' => $entry['unique_id']];
+                    }
+                }
+            }
+
+            return $entries;
+        } catch (Throwable) {
+            throw new HomeAssistantException('Home Assistant update entity registry could not be read.');
+        } finally {
+            if ($client !== null) {
+                try {
+                    $client->disconnect();
+                } catch (Throwable) {
+                }
+            }
+        }
+    }
+
     protected function createClient(string $url): Client
     {
         $context = (new Context)->setOptions(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false]]);
