@@ -19,6 +19,6 @@ class HistoryState
         $this->attributes = $data['attributes'] ?? [];
 
         $this->lastChanged = Carbon::parse($data['last_changed']);
-        $this->lastUpdated = Carbon::parse($data['last_updated']);
+        $this->lastUpdated = Carbon::parse($data['last_updated'] ?? $data['last_changed']);
     }
 }

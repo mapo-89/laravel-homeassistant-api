@@ -39,7 +39,7 @@ class History
             $endpoint .= '/' . $start->toIso8601String();
         }
 
-        $query = [];
+        $query = ['significant_changes_only' => $significantOnly ? '1' : '0'];
 
         if ($end) {
             $query['end_time'] = $end->toIso8601String();
@@ -47,10 +47,6 @@ class History
 
         if (!empty($entityIds)) {
             $query['filter_entity_id'] = implode(',', $entityIds);
-        }
-
-        if ($significantOnly) {
-            $query['significant_changes_only'] = '1';
         }
 
         if ($minimal) {
@@ -98,7 +94,7 @@ class History
             $entityId = $entityStates[0]['entity_id'];
 
             $result[$entityId] = array_map(
-                fn (array $state) => new HistoryState($state),
+                fn (array $state) => new HistoryState($state + ['entity_id' => $entityId]),
                 $entityStates
             );
         }

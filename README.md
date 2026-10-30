@@ -59,6 +59,18 @@ php artisan vendor:publish --tag=homeassistant-api-config
 
 The legacy `--tag=config` tag remains supported. Laravel discovers the service provider and facade automatically.
 
+REST timeouts and the states cache can be configured in the published configuration
+or in the array passed to `HomeassistantApi::make($config)`:
+
+```php
+'connect_timeout' => 3, // Seconds to establish a connection
+'timeout' => 8, // Seconds per REST request
+'cache_responses' => true, // Cache state lists for five seconds per URL and token
+```
+
+Set `cache_responses => false` to fetch each state list afresh. Dynamic
+configurations still need their own URL and token.
+
 ---
 
 ## Usage
@@ -103,7 +115,6 @@ $homeassistantApi->config()->check();
 
 ---
 
-
 ### Set the external URL
 
 ```php
@@ -122,7 +133,6 @@ for separate URLs and tokens per installation.
 $homeassistantApi->states()->all(); // adapt this to your use case
 ```
 
-
 ---
 
 ### Template API
@@ -136,6 +146,8 @@ $homeassistantApi->template()->render(<<<'TEMPLATE'
     TEMPLATE
 );
 ```
+
+`templates()->render(...)` remains supported as an equivalent accessor.
 
 ---
 
@@ -186,9 +198,14 @@ $flat = $homeassistantApi->history()->flat(
 
 ```
 
+`significantOnly` defaults to `false` and requests every change.
+With `minimal: true`, Home Assistant returns only state and change time for
+intermediate entries. Their entity ID is restored from the group; `lastUpdated`
+falls back to `lastChanged`, and omitted attributes are represented as an empty array.
+
 **Supported endpoints**
 - `GET /api/history/period`
-- `POST /api/history/period/{timestamp}`
+- `GET /api/history/period/{timestamp}`
 
 ---
 
@@ -207,7 +224,7 @@ $entries = $homeassistantApi->logbook()->get(
 ```
 
 **Supported endpoint**
-- `GET /api/logbook`
+- `GET /api/logbook/{timestamp}`
 
 ---
 
@@ -323,7 +340,7 @@ The following Artisan commands always use the static configuration from `.env` o
 # List all states
 php artisan ha:call
 
-# Call a service (e.g., switch lights) (in implementation)
+# Call a service (e.g., switch lights)
 php artisan ha:call light toggle --entity=light.livingroom
 ```
 
@@ -374,6 +391,9 @@ composer test
 Integration tests cover configuration merging, both publish tags, `ha:call`
 registration, and the shared service and facade instance. WebSocket tests use
 mocks and do not require a running Home Assistant instance.
+REST tests use Laravel HTTP fakes to cover CLI output, templates, history,
+logbook periods, timeout settings, cache isolation and error handling. WebSocket
+tests also cover restart requirements, registry batches and token operations.
 
 ## Shared release workflow
 

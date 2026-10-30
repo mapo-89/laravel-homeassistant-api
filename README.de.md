@@ -59,6 +59,18 @@ php artisan vendor:publish --tag=homeassistant-api-config
 
 Der bisherige Tag `--tag=config` bleibt unterstützt. Laravel registriert den Service Provider und die Fassade automatisch.
 
+REST-Zeitlimits und der States-Cache lassen sich in der veröffentlichten Konfiguration
+oder im Array für `HomeassistantApi::make($config)` einstellen:
+
+```php
+'connect_timeout' => 3, // Sekunden bis zum Verbindungsaufbau
+'timeout' => 8, // Sekunden pro REST-Anfrage
+'cache_responses' => true, // States-Listen fünf Sekunden je URL und Token cachen
+```
+
+Mit `cache_responses => false` wird jede States-Liste neu abgerufen. Dynamische
+Konfigurationen müssen weiterhin eine eigene URL und einen Token enthalten.
+
 ---
 
 ## Verwendung
@@ -103,7 +115,6 @@ $homeassistantApi->config()->check();
 
 ---
 
-
 ### Externe URL setzen
 
 ```php
@@ -135,6 +146,8 @@ $homeassistantApi->template()->render(<<<'TEMPLATE'
     TEMPLATE
 );
 ```
+
+`templates()->render(...)` bleibt als gleichwertiger Aufruf unterstützt.
 
 ---
 
@@ -185,9 +198,14 @@ $flat = $homeassistantApi->history()->flat(
 
 ```
 
+`significantOnly` ist standardmäßig `false` und fordert alle Änderungen an.
+Mit `minimal: true` liefert Home Assistant für Zwischenstände nur State und
+Änderungszeit. Die Entity-ID wird aus der Gruppe ergänzt; `lastUpdated` verwendet
+dann `lastChanged`, und fehlende Attribute werden als leeres Array dargestellt.
+
 **Unterstützte Endpunkte**
 - `GET /api/history/period`
-- `POST /api/history/period/{timestamp}`
+- `GET /api/history/period/{timestamp}`
 
 ---
 
@@ -206,10 +224,9 @@ $entries = $homeassistantApi->logbook()->get(
 ```
 
 **Unterstützter Endpunkt**
-- `GET /api/logbook`
+- `GET /api/logbook/{timestamp}`
 
 ---
-
 
 
 ## Query-Builder API (States)
@@ -324,7 +341,6 @@ Die folgenden Artisan-Befehle verwenden immer die statische Konfiguration aus de
 # Alle States auflisten
 php artisan ha:call
 
-
 # Einen Service aufrufen (z.B. Licht umschalten)
 php artisan ha:call light toggle --entity=light.wohnzimmer
 ```
@@ -376,6 +392,9 @@ composer test
 Die Integrationstests prüfen Konfigurations-Merging, beide Publish-Tags,
 die Registrierung von `ha:call` sowie die gemeinsame Service- und Fassadeninstanz.
 Die WebSocket-Tests verwenden Mocks und benötigen keine laufende Home-Assistant-Instanz.
+REST-Tests prüfen mit Laravel-HTTP-Fakes die CLI-Ausgabe, Templates, History,
+Logbook-Zeiträume, Zeitlimits, Cache-Trennung und Fehlerbehandlung. Die
+WebSocket-Tests decken auch Neustartbedarf, Registry-Gruppen und Token-Operationen ab.
 
 ## Releases und Abhängigkeitsupdates
 

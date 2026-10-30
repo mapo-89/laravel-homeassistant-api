@@ -26,13 +26,13 @@ class HomeassistantCommand extends Command
             if ($entity) {
                 $this->info('Listing state for ' .$entity);
                 $state = $ha->states()->get($entity);
-                $this->line($state['entity_id'] . ' => ' . $state['state']);
+                $this->line($state->entity_id . ' => ' . $state->state);
                 return 0;
             }
             $this->info('Listing all states:');
             $states = $ha->states()->all();
             foreach ($states as $state) {
-                $this->line($state['entity_id'] . ' => ' . $state['state']);
+                $this->line($state->entity_id . ' => ' . $state->state);
             }
             return 0;
         }

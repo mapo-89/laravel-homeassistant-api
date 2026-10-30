@@ -35,6 +35,9 @@ final class HomeassistantApiServiceProviderTest extends TestCase
         $this->assertSame([
             'url' => 'https://configured.example.test',
             'token' => 'synthetic-token',
+            'connect_timeout' => 3,
+            'timeout' => 8,
+            'cache_responses' => true,
         ], (new ApiClient)->getConfig());
     }
 

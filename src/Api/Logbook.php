@@ -32,7 +32,6 @@ class Logbook
         $start ??= now()->subDay();
 
         $params = [
-            'start_time' => $start->toIso8601String(),
             'entity'     => implode(',', $entityIds),
         ];
 
@@ -40,7 +39,7 @@ class Logbook
             $params['end_time'] = $end->toIso8601String();
         }
 
-        $raw = $this->client->_get('logbook', $params);
+        $raw = $this->client->_get('logbook/'.$start->toIso8601String(), $params);
 
         return array_map(
             fn (array $entry) => new LogbookEntry($entry),

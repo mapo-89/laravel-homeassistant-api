@@ -31,10 +31,7 @@ class ApiClient
 
     public function getConfig(): array
     {
-        $config = $this->configLoader ?? [
-            'url' => config('homeassistant-api.url'),
-            'token' => config('homeassistant-api.token'),
-        ];
+        $config = $this->configLoader ?? config('homeassistant-api', []);
 
         if (! isset($config['url'], $config['token'])) {
             throw new \InvalidArgumentException("Config must include 'url' and 'token'");

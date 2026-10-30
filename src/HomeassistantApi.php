@@ -26,6 +26,11 @@ class HomeassistantApi
         return $this->getApiInstance($method);
     }
 
+    public function template(): Api\Templates
+    {
+        return new Api\Templates($this->client);
+    }
+
     protected function getApiInstance(string $method): object
     {
         $class = __NAMESPACE__.'\\Api\\'.Str::studly($method);
