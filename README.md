@@ -68,6 +68,13 @@ or in the array passed to `HomeassistantApi::make($config)`:
 'cache_responses' => true, // Cache state lists for five seconds per URL and token
 ```
 
+Successful `states()->createOrUpdate()`, `states()->delete()` and service calls
+invalidate the cached state list for their URL and token. Failed API calls leave
+the cached list intact. When the cache is unavailable, states are fetched directly;
+cache failures do not hide successful API operations. Invalidation is also attempted
+when cache reads are disabled, so other clients with the same URL and token can
+fetch fresh data. If invalidation fails, an old entry may remain until its five-second expiry.
+
 Set `cache_responses => false` to fetch each state list afresh. Dynamic
 configurations still need their own URL and token.
 
@@ -135,6 +142,30 @@ $homeassistantApi->states()->all(); // adapt this to your use case
 
 ---
 
+### Services API
+
+```php
+$homeassistantApi->services()->turnOn('light.kitchen', ['brightness' => 80]);
+$homeassistantApi->services()->turnOff('light.kitchen');
+$homeassistantApi->services()->toggle('light.kitchen');
+
+$response = $homeassistantApi->services()->call(
+    'weather',
+    'get_forecasts',
+    ['entity_id' => 'weather.home', 'type' => 'daily'],
+    returnResponse: true,
+);
+$forecast = $response['service_response']['weather.home']['forecast'];
+```
+
+Without `returnResponse: true`, `call()` returns the list of changed states.
+With the option enabled, it sends the `?return_response` query flag and returns
+`changed_states` and `service_response`. Use it for services that support or require
+responses. The convenience methods validate entity IDs before sending and throw
+`InvalidArgumentException` for invalid formats.
+
+---
+
 ### Template API
 
 More information about [templating](https://www.home-assistant.io/docs/configuration/templating)
@@ -165,6 +196,8 @@ $homeassistantApi->events()->fire('my_custom_event', [
     'user_id' => 123,
 ]);
 ```
+
+`fire()` also works without event data; it sends an empty JSON object (`{}`).
 
 **Supported endpoints**
 - `GET /api/events`
@@ -197,6 +230,9 @@ $flat = $homeassistantApi->history()->flat(
 );
 
 ```
+
+`get()` and `flat()` accept both `Carbon` and `CarbonImmutable` start and end
+dates through `CarbonInterface`.
 
 `significantOnly` defaults to `false` and requests every change.
 With `minimal: true`, Home Assistant returns only state and change time for
@@ -380,6 +416,17 @@ The MIT License (MIT). Please see the [License File](LICENSE.md) for more inform
 ## Package tooling
 
 Configuration and command registration use [Spatie Laravel Package Tools](https://github.com/spatie/laravel-package-tools).
+
+## Version 2 API compatibility
+
+`States` and `Services` are standalone API endpoints and no longer extend
+`ApiClient`. Their `getConfig()` uses the injected client's configuration.
+For low-level requests through `execute()`, `_get()`, `_post()`, `_put()`, `_patch()`
+or `_delete()`, use `Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient` directly.
+
+Malformed or scalar JSON responses raise `HomeAssistantException` with a fixed
+message and no response content. An empty HTTP 204 response returns an empty
+array; template responses remain unchanged plain text.
 
 ## Testing
 
