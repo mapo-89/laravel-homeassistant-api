@@ -1,4 +1,5 @@
 <?php
+
 /*
  * States.php
  * @author Manuel Postler <info@postler.de>
@@ -8,16 +9,20 @@
 namespace Mapo89\LaravelHomeassistantApi\Api;
 
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
+use Mapo89\LaravelHomeassistantApi\Api\Utils\EntityId;
+use Mapo89\LaravelHomeassistantApi\Api\Utils\StateCache;
 use Mapo89\LaravelHomeassistantApi\DTOs\State;
 use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
 use Mapo89\LaravelHomeassistantApi\Query\StatesQuery;
-use Illuminate\Support\Facades\Cache;
+
 /**
+ * @mixin StatesQuery
+ *
  * Homeassistant REST Api
  *
  * @see https://developers.home-assistant.io/docs/api/rest
  */
-class States extends ApiClient
+class States
 {
     protected ApiClient $client;
 
@@ -26,18 +31,39 @@ class States extends ApiClient
         $this->client = $client;
     }
 
-    public function __call($method, $arguments)
+    /**
+     * @return array<string, mixed>
+     */
+    public function getConfig(): array
+    {
+        return $this->client->getConfig();
+    }
+
+    /**
+     * @param  list<mixed>  $arguments
+     */
+    public function __call(string $method, array $arguments): mixed
     {
         return $this->query()->{$method}(...$arguments);
     }
 
     public function query(): StatesQuery
     {
-        $raw = Cache::remember(
-            'ha.states',
-            now()->addSeconds(5),
-            fn () => $this->client->_get('states')
-        );
+        $config = $this->client->getConfig();
+        $fetch = function (): array {
+            $states = $this->client->_get('states');
+            if (! is_array($states) || ! array_is_list($states)) {
+                throw new HomeAssistantException('Home Assistant returned invalid states.');
+            }
+            foreach ($states as $state) {
+                if (! is_array($state) || ! is_string($state['entity_id'] ?? null) || ! is_string($state['state'] ?? null) || ! is_array($state['attributes'] ?? [])) {
+                    throw new HomeAssistantException('Home Assistant returned invalid states.');
+                }
+            }
+
+            return $states;
+        };
+        $raw = StateCache::remember($config, $fetch);
 
         return new StatesQuery($raw);
     }
@@ -56,15 +82,21 @@ class States extends ApiClient
     // =========================== get ====================================
 
     /**
-     * Return a single state.
+     * Return one state, or all states when no entity ID is supplied.
      *
-     * @param $entity_id
-     * @return State
+     * @return State|State[]
+     *
+     * @phpstan-return ($entity_id is null ? list<State> : State)
      */
-    public function get($entity_id): State 
+    public function get(?string $entity_id = null): State|array
     {
+        if ($entity_id === null) {
+            return $this->all();
+        }
+        EntityId::domain($entity_id);
+
         return new State(
-            $this->client->_get('states/' . $entity_id)
+            $this->client->_get('states/'.$entity_id)
         );
     }
 
@@ -73,20 +105,21 @@ class States extends ApiClient
     /**
      * Create or update a state.
      *
-     * @param string $entity_id
-     * @param string $state
-     * @param array $attributes
-     * @return State
+     * @param  array<string, mixed>  $attributes
+     *
      * @throws HomeAssistantException
      */
     public function createOrUpdate(string $entity_id, string $state, array $attributes = []): State
     {
+        EntityId::domain($entity_id);
         $payload = [
             'state' => $state,
-            'attributes' => $attributes
+            'attributes' => $attributes,
         ];
 
-        $raw = $this->client->_post('states/' . $entity_id, $payload);
+        $raw = $this->client->_post('states/'.$entity_id, $payload);
+        StateCache::forget($this->client->getConfig());
+
         return new State($raw);
     }
 
@@ -95,13 +128,14 @@ class States extends ApiClient
     /**
      * Delete a custom state.
      *
-     * @param string $entity_id
-     * @return bool
      * @throws HomeAssistantException
      */
     public function delete(string $entity_id): bool
     {
-        $this->client->_delete('states/' . $entity_id);
+        EntityId::domain($entity_id);
+        $this->client->_delete('states/'.$entity_id);
+        StateCache::forget($this->client->getConfig());
+
         return true; // Wenn keine Exception, war es erfolgreich
     }
 }

@@ -4,6 +4,8 @@ namespace Mapo89\LaravelHomeassistantApi\Api;
 
 use Carbon\CarbonInterface;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
+use Mapo89\LaravelHomeassistantApi\Api\Utils\EntityId;
+use Mapo89\LaravelHomeassistantApi\Api\Utils\ResponseValidator;
 use Mapo89\LaravelHomeassistantApi\DTOs\LogbookEntry;
 
 class Logbook
@@ -19,8 +21,6 @@ class Logbook
      * Get logbook entries
      *
      * @param  array<string>  $entityIds
-     * @param  CarbonInterface|null  $start
-     * @param  CarbonInterface|null  $end
      * @return LogbookEntry[]
      */
     public function get(
@@ -28,24 +28,23 @@ class Logbook
         ?CarbonInterface $start = null,
         ?CarbonInterface $end = null
     ): array {
+        EntityId::requireList($entityIds, 'Logbook');
         // Fallback: last 24 hours
         $start ??= now()->subDay();
 
         $params = [
-            'start_time' => $start->toIso8601String(),
-            'entity'     => implode(',', $entityIds),
+            'entity' => implode(',', $entityIds),
         ];
 
         if ($end) {
             $params['end_time'] = $end->toIso8601String();
         }
 
-        $raw = $this->client->_get('logbook', $params);
+        $raw = ResponseValidator::records($this->client->_get('logbook/'.$start->toIso8601String(), $params), 'logbook entries');
 
         return array_map(
             fn (array $entry) => new LogbookEntry($entry),
             $raw
         );
     }
-
 }

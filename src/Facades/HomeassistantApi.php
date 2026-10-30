@@ -1,4 +1,5 @@
 <?php
+
 /*
  * HomeassistantApi.php
  * @author Manuel Postler <info@postler.de>
@@ -13,8 +14,6 @@ class HomeassistantApi extends Facade
 {
     /**
      * Get the registered name of the component.
-     *
-     * @return string
      */
     protected static function getFacadeAccessor(): string
     {

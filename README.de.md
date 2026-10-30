@@ -1,344 +1,194 @@
-# 🚀 Laravel Homeassistant API
+# Laravel Homeassistant API
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/mapo-89/laravel-homeassistant-api.svg?style=flat-square)](https://packagist.org/packages/mapo-89/laravel-homeassistant-api)
-[![Total Downloads](https://img.shields.io/packagist/dt/mapo-89/laravel-homeassistant-api.svg?style=flat-square)](https://packagist.org/packages/mapo-89/laravel-homeassistant-api)
-![GitHub Actions](https://github.com/mapo-89/laravel-homeassistant-api/actions/workflows/main.yml/badge.svg)
+[![Version](https://img.shields.io/packagist/v/mapo-89/laravel-homeassistant-api.svg?label=version&color=03a9f4)](https://packagist.org/packages/mapo-89/laravel-homeassistant-api)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/mapo-89/laravel-homeassistant-api/blob/main/LICENSE.md)
+[![PHP](https://img.shields.io/packagist/php-v/mapo-89/laravel-homeassistant-api.svg?logo=php&logoColor=white)](https://packagist.org/packages/mapo-89/laravel-homeassistant-api)
+[![Laravel](https://img.shields.io/badge/Laravel-12%20%7C%2013-FF2D20.svg?logo=laravel&logoColor=white)](https://laravel.com/)
+[![Total Downloads](https://img.shields.io/packagist/dt/mapo-89/laravel-homeassistant-api.svg)](https://packagist.org/packages/mapo-89/laravel-homeassistant-api)
+[![GitHub Actions](https://github.com/mapo-89/laravel-homeassistant-api/actions/workflows/main.yml/badge.svg)](https://github.com/mapo-89/laravel-homeassistant-api/actions/workflows/main.yml)
+[![GitHub issues](https://img.shields.io/github/issues/mapo-89/laravel-homeassistant-api.svg)](https://github.com/mapo-89/laravel-homeassistant-api/issues)
+[![GitHub stars](https://img.shields.io/github/stars/mapo-89/laravel-homeassistant-api.svg?style=flat)](https://github.com/mapo-89/laravel-homeassistant-api/stargazers)
+[![Last commit](https://img.shields.io/github/last-commit/mapo-89/laravel-homeassistant-api.svg)](https://github.com/mapo-89/laravel-homeassistant-api/commits/main)
 
-Eine einfache Laravel-Integration für die [Homeassistant API](https://developers.home-assistant.io/docs/api/rest). Dieses Paket stellt eine saubere Schnittstelle zur Verfügung, um mit der API zu interagieren.
+<a href="https://buymeacoffee.com/mapo"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="60"></a>
 
-📖 Diese README ist auch auf [🇬🇧 Englisch](README.md) verfügbar.
+Laravel-Integration für die REST- und WebSocket-APIs von Home Assistant, mit
+separaten URLs und Token je Installation.
 
----
+[English documentation](README.md)
 
-## 📦 Installation
+## Voraussetzungen
 
-Installiere das Paket über Composer:
+- PHP ab Version 8.3
+- Laravel 12 oder 13
+- Eine Home-Assistant-Instanz und ein Zugriffstoken
+
+## Installation
 
 ```bash
 composer require mapo-89/laravel-homeassistant-api
 ```
 
-Füge deinen API-Token in deine `.env`-Datei ein:
+Laravel registriert den Service Provider und die Fassade automatisch.
+Konfiguriere deine Installation in der `.env`:
 
 ```env
 HA_URL=http://homeassistant.local:8123
 HA_TOKEN=your_long_lived_token
 ```
 
-## ⚡️ Dynamische Konfiguration (URL & Token zur Laufzeit)
+## Konfiguration
 
-Neben der statischen Konfiguration über die config/homeassistant.php unterstützt dieses Package auch dynamische Konfigurationen zur Laufzeit.
-Das ist z. B. nützlich, wenn jeder Benutzer einen eigenen Home Assistant Token besitzt oder die Instanz-URL dynamisch gesetzt werden soll.
-
-Optional: Veröffentliche die Konfigurationsdatei:
+Veröffentliche bei Bedarf `config/homeassistant-api.php`:
 
 ```bash
-php artisan vendor:publish --provider="Mapo89\LaravelHomeassistantApi\HomeassistantApiServiceProvider" --tag="config"
+php artisan vendor:publish --tag=homeassistant-api-config
 ```
 
----
+Der bisherige Tag `--tag=config` bleibt unterstützt.
 
-## ⚙️ Verwendung
+| Option | Standard | Zweck |
+| --- | --- | --- |
+| `connect_timeout` | `3` | Zeitlimit für den Verbindungsaufbau in Sekunden. |
+| `timeout` | `8` | Zeitlimit pro Anfrage in Sekunden. |
+| `cache_responses` | `true` | States-Listen fünf Sekunden cachen; mit `false` stets neu abrufen. |
 
-> 📚 Die vollständige API-Dokumentation findest du hier: [home-assistant.io](https://developers.home-assistant.io/docs/api/rest)
-
-### Initialisierung
+## Verwendung
 
 ```php
 use Mapo89\LaravelHomeassistantApi\Facades\HomeassistantApi;
 
-$homeassistantApi = HomeassistantApi::make();
+$ha = HomeassistantApi::make();
 
-//Alternative mit dynamischer COnfig
-$config = [
-    'url' => 'http://homeassistant.local:8123',
-    'token' => 'your_long_lived_token'
-];
-$homeassistantApi = HomeassistantApi::make($config);
-```
-
----
-
-### 🖥️ System API
-
-```php
-// Prüfen, ob die API funktioniert
-$homeassistantApi->system()->verify();
-```
-
----
-
-### ⚙️ Config API
-
-```php
-// Gebe aktuelle Konfiguration aus
-$homeassistantApi->config()->get();
-
-// Prüfe aktuelle Konfiguration
-$homeassistantApi->config()->check();
-```
-
----
-
-
-### Externe URL setzen
-
-```php
-$homeassistantApi->config()->setExternalUrl('https://kunde.example.com');
-```
-
-Die Methode authentifiziert sich über die WebSocket-API, ändert ausschließlich
-`external_url` und liest den Wert anschließend zur Bestätigung zurück. Der Token
-muss zu einem Home-Assistant-Administrator gehören. TLS-Prüfung bleibt aktiv;
-Verbindungs- und Antwortzeiten sind begrenzt. Mit `HomeassistantApi::make($config)`
-lassen sich URL und Token je Installation separat übergeben.
-
-### 🔄 States API
-
-```php
-$homeassistantApi->states()->all(); // passe das an deinen Anwendungsfall an
-```
-
----
-
-### 🖥️ Template API
-
-Mehr Infos zum [Templatung](https://www.home-assistant.io/docs/configuration/templating)
-
-```php
-// rendert ein Template
-$homeassistantApi->template()->render(<<<'TEMPLATE'
-    Paulus is at {{ states('device_tracker.paulus') }}!
-    TEMPLATE
-);
-```
-
----
-
-### 🔔 Events API
-
-Interaktion mit dem Home Assistant Event-System.
-
-```php
-// Alle verfügbaren Events abrufen
-$events = $homeassistantApi->events()->all();
-
-// Custom Event auslösen
-$homeassistantApi->events()->fire('my_custom_event', [
-    'source' => 'laravel',
-    'user_id' => 123,
+// Für eine andere Installation sowohl URL als auch Token übergeben.
+$ha = HomeassistantApi::make([
+    'url' => 'https://homeassistant.example.com',
+    'token' => 'your_long_lived_token',
 ]);
 ```
 
-**Unterstützte Endpunkte**
-- `GET /api/events`
-- `POST /api/events/{event_type}`
+Die Konfigurationsoptionen können auch im Array für `make()` gesetzt werden.
 
----
-
-### 🕒 History API 
-
-Zugriff auf historische State-Änderungen von Entities.
+### States und Filter
 
 ```php
-// Gruppierte Historie nach Entity
-$history = $homeassistantApi->history()->get(
-    start: now()->subHours(12),
-    entityIds: ['light.kitchen', 'sensor.temperature'],
-    significantOnly: true
-);
+$states = $ha->states()->get(); // State[]; all() ist ein gleichwertiger Alias
+$state = $ha->states()->get('light.kitchen'); // State
 
-// Zugriff pro Entity
-$history['light.kitchen']; // HistoryState[]
-```
-
-**Flache Ausgabe (ideal für Charts & Analytics)**
-
-```php
-$flat = $homeassistantApi->history()->flat(
-    start: now()->subHours(6),
-    entityIds: ['light.kitchen', 'sensor.temperature'],
-);
-
-```
-
-**Unterstützte Endpunkte**
-- `GET /api/history/period`
-- `POST /api/history/period/{timestamp}`
-
----
-
-### 📒 Logbook API
-
-Zugriff auf das Home Assistant Logbook – ideal für Benutzeraktivitäten, Automationen und Systemereignisse.
-
-> ⚠️ Die Logbook-API erfordert mindestens eine `entityId`.
-
-```php
-$entries = $homeassistantApi->logbook()->get(
-    start: now()->subHours(6),
-    entityIds: ['light.kitchen'],
-    end: now()
-);
-```
-
-**Unterstützter Endpunkt**
-- `GET /api/logbook`
-
----
-
-
-
-## Query-Builder API (States)
-
-Home Assistant unterstützt kein serverseitiges Filtern von States.
-Dieses Package stellt daher eine **Query-Builder-artige API** zur Verfügung,
-mit der States clientseitig gefiltert werden können – inspiriert von Laravel Eloquent.
-
----
-
-## ✨ Beispiel
-
-```php
-use Mapo89\LaravelHomeassistantApi\Facades\HomeassistantApi;
-
-$states = HomeassistantApi::make()
-    ->states()
+$lights = $ha->states()
     ->whereDomain('light')
     ->whereState('on')
     ->get();
 ```
 
----
+Die Filter werden auf die abgerufene States-Liste angewendet.
 
-## 🧱 Verfügbare Query-Methoden
+| Methode | Zweck |
+| --- | --- |
+| `whereDomain($domain)` | Nach Entity-Domain filtern. |
+| `whereState($state)` | Nach Zustand filtern. |
+| `whereEntityIds($ids)` | Nach Entity-IDs filtern. |
+| `whereAttribute($key, $value)` | Nach einem Attributwert filtern. |
+| `get()` | Passende `State`-Objekte zurückgeben. |
+| `first()` | Das erste passende `State`-Objekt oder `null` zurückgeben. |
 
-### `whereDomain(string $domain)`
-
-Filtert nach der Domain einer Entity (z. B. `light`, `sensor`, `switch`).
-
-```php
-$lights = HomeassistantApi::make()
-    ->states()
-    ->whereDomain('light')
-    ->get();
-```
-
----
-
-### `whereState(string $state)`
-
-Filtert nach dem State einer Entity (z. B. `on`, `off`, `unavailable`).
+### Services
 
 ```php
-$active = HomeassistantApi::make()
-    ->states()
-    ->whereState('on')
-    ->get();
+$ha->services()->turnOn('light.kitchen', ['brightness' => 80]);
+$ha->services()->turnOff('light.kitchen');
+$ha->services()->toggle('light.kitchen');
+
+$response = $ha->services()->call(
+    'weather',
+    'get_forecasts',
+    ['entity_id' => 'weather.home', 'type' => 'daily'],
+    returnResponse: true,
+);
+$forecast = $response['service_response']['weather.home']['forecast'];
 ```
 
----
+`call()` liefert normalerweise die geänderten States. Für Dienste, die eine
+Antwort unterstützen oder verlangen, liefert `returnResponse: true` die Felder
+`changed_states` und `service_response`.
 
-### `whereEntityIds(array $entityIds)`
-
-Filtert nach einer Liste konkreter Entity-IDs.
+### System und Konfiguration
 
 ```php
-$states = HomeassistantApi::make()
-    ->states()
-    ->whereEntityIds([
-        'light.kitchen',
-        'sensor.temperature',
-    ])
-    ->get();
+$ha->system()->verify();
+$ha->config()->get();
+$ha->config()->check();
+$ha->config()->setExternalUrl('https://customer.example.com');
 ```
 
----
+Zum Setzen der externen URL wird ein Home-Assistant-Administrator-Token benötigt.
 
-### `whereAttribute(string $key, mixed $value)`
-
-Filtert nach Attributen einer Entity.
+### Templates und Events
 
 ```php
-$lights = HomeassistantApi::make()
-    ->states()
-    ->whereDomain('light')
-    ->whereAttribute('brightness', 255)
-    ->get();
+$text = $ha->template()->render('Temperature: {{ states("sensor.kitchen_temperature") }}');
+
+$events = $ha->events()->all();
+$ha->events()->fire('my_custom_event', ['source' => 'laravel']);
 ```
 
----
+### History und Logbook
 
-### `get()`
-
-Gibt alle gefilterten States als Array von `State` DTOs zurück.
+Beide APIs benötigen mindestens eine Entity-ID. Datumswerte können als `Carbon`
+oder `CarbonImmutable` übergeben werden.
 
 ```php
-$states = HomeassistantApi::make()
-    ->states()->get();
+$entities = ['light.kitchen'];
+$start = now()->subHours(6);
+
+$history = $ha->history()->get(start: $start, entityIds: $entities);
+$flat = $ha->history()->flat(start: $start, entityIds: $entities);
+$entries = $ha->logbook()->get(entityIds: $entities, start: $start, end: now());
 ```
 
----
+`get()` gruppiert `HistoryState`-Objekte nach Entity-ID, `flat()` liefert eine
+flache Liste. History unterstützt außerdem die Optionen `significantOnly` und
+`minimal`. Logbook gibt `LogbookEntry`-Objekte zurück.
 
-### `first()`
+Details zu den Home-Assistant-Endpunkten stehen in der [REST-API-Dokumentation](https://developers.home-assistant.io/docs/api/rest).
 
-Gibt den ersten passenden State oder `null` zurück.
-
-```php
-$state = HomeassistantApi::make()
-    ->states()
-    ->whereEntityIds(['light.kitchen'])
-    ->first();
-```
-
----
-
-## Artisan Command
-
-Die folgenden Artisan-Befehle verwenden immer die statische Konfiguration aus der `.env` bzw. aus `config/homeassistant.php`:
+### Artisan
 
 ```bash
-# Alle States auflisten
 php artisan ha:call
-
-
-# Einen Service aufrufen (z.B. Licht umschalten) 
-php artisan ha:call light toggle --entity=light.wohnzimmer
+php artisan ha:call --entity=light.kitchen
+php artisan ha:call light toggle --entity=light.kitchen
 ```
 
----
+Artisan verwendet die statische Paketkonfiguration.
 
-## 📒 Changelog
+## Umstieg auf Version 2
 
-Alle Änderungen findest du im [CHANGELOG](CHANGELOG.md).
+- Laravel 10 und 11 werden nicht mehr unterstützt.
+- `States` und `Services` erben nicht mehr von `ApiClient`. Verwende für direkte
+  HTTP-Anfragen den [ApiClient](src/Api/Utils/ApiClient.php).
 
----
+API-Fehler werfen eine `HomeAssistantException`, ungültige Argumente eine `InvalidArgumentException`.
 
-## 🤝 Mitwirken
+## Entwicklung
 
-Beiträge sind herzlich willkommen! Details findest du in der [CONTRIBUTING](CONTRIBUTING.md)-Datei.
+```bash
+composer install
+composer qa
+```
 
----
+Die Tests verwenden simulierte API-Antworten und benötigen keine laufende
+Home-Assistant-Instanz. Hinweise zu Entwicklung, Abhängigkeitsupdates und Releases
+stehen in [CONTRIBUTING](CONTRIBUTING.md) und im [Release-Leitfaden](.release/README.md).
+Änderungen findest du im [CHANGELOG](CHANGELOG.md).
 
-## 🔐 Sicherheit
+## Sicherheit
 
-Wenn du sicherheitsrelevante Probleme entdeckst, melde dich bitte **nicht** über den Issue Tracker, sondern direkt per E-Mail an [info@postler.de](mailto:info@postler.de).
+Melde Sicherheitsprobleme an [info@postler.de](mailto:info@postler.de).
 
----
+## Credits und Lizenz
 
-## 👥 Credits
-
-- [Manuel Postler](https://github.com/mapo-89)  
+- [Manuel Postler](https://github.com/mapo-89)
 - [Alle Mitwirkenden](../../contributors)
 
----
-
-## 📄 Lizenz
-
-Dieses Paket steht unter der [MIT Lizenz](LICENSE.md).
-
----
-
-## 🛠️ Boilerplate
-
-Erstellt mit dem [Laravel Package Boilerplate](https://laravelpackageboilerplate.com).
+Veröffentlicht unter der [MIT-Lizenz](LICENSE.md).

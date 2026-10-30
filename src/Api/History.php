@@ -2,9 +2,11 @@
 
 namespace Mapo89\LaravelHomeassistantApi\Api;
 
-use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
+use Mapo89\LaravelHomeassistantApi\Api\Utils\EntityId;
 use Mapo89\LaravelHomeassistantApi\DTOs\HistoryState;
+use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
 
 class History
 {
@@ -18,40 +20,32 @@ class History
     /**
      * Get state history
      *
-     * @param Carbon|null $start
-     * @param Carbon|null $end
-     * @param array $entityIds
-     * @param bool $significantOnly
-     * @param bool $minimal
      *
+     * @param  list<string>  $entityIds
      * @return array<string, HistoryState[]>
      */
     public function get(
-        ?Carbon $start = null,
-        ?Carbon $end = null,
+        ?CarbonInterface $start = null,
+        ?CarbonInterface $end = null,
         array $entityIds = [],
         bool $significantOnly = false,
         bool $minimal = false
     ): array {
+        EntityId::requireList($entityIds, 'History');
+
         $endpoint = 'history/period';
 
         if ($start) {
-            $endpoint .= '/' . $start->toIso8601String();
+            $endpoint .= '/'.$start->toIso8601String();
         }
 
-        $query = [];
+        $query = ['significant_changes_only' => $significantOnly ? '1' : '0'];
 
         if ($end) {
             $query['end_time'] = $end->toIso8601String();
         }
 
-        if (!empty($entityIds)) {
-            $query['filter_entity_id'] = implode(',', $entityIds);
-        }
-
-        if ($significantOnly) {
-            $query['significant_changes_only'] = '1';
-        }
+        $query['filter_entity_id'] = implode(',', $entityIds);
 
         if ($minimal) {
             $query['minimal_response'] = '1';
@@ -65,11 +59,12 @@ class History
     /**
      * Flatten history into a single list
      *
+     * @param  list<string>  $entityIds
      * @return HistoryState[]
      */
     public function flat(
-        ?Carbon $start = null,
-        ?Carbon $end = null,
+        ?CarbonInterface $start = null,
+        ?CarbonInterface $end = null,
         array $entityIds = [],
         bool $significantOnly = false,
         bool $minimal = false
@@ -83,24 +78,35 @@ class History
     }
 
     /**
-     * @param array $raw
+     * @param  array<array-key, mixed>  $raw
      * @return array<string, HistoryState[]>
      */
     protected function mapResponse(array $raw): array
     {
+        if (! array_is_list($raw)) {
+            throw new HomeAssistantException('Home Assistant returned invalid history.');
+        }
         $result = [];
 
         foreach ($raw as $entityStates) {
-            if (empty($entityStates)) {
+            if (! is_array($entityStates) || ! array_is_list($entityStates)) {
+                throw new HomeAssistantException('Home Assistant returned invalid history.');
+            }
+            if ($entityStates === []) {
                 continue;
             }
-
+            if (! is_array($entityStates[0]) || ! is_string($entityStates[0]['entity_id'] ?? null)
+                || $entityStates[0]['entity_id'] === '') {
+                throw new HomeAssistantException('Home Assistant returned invalid history.');
+            }
             $entityId = $entityStates[0]['entity_id'];
-
-            $result[$entityId] = array_map(
-                fn (array $state) => new HistoryState($state),
-                $entityStates
-            );
+            $result[$entityId] = [];
+            foreach ($entityStates as $state) {
+                if (! is_array($state) || (array_key_exists('entity_id', $state) && $state['entity_id'] !== $entityId)) {
+                    throw new HomeAssistantException('Home Assistant returned invalid history.');
+                }
+                $result[$entityId][] = new HistoryState($state + ['entity_id' => $entityId]);
+            }
         }
 
         return $result;

@@ -5,15 +5,28 @@ namespace Mapo89\LaravelHomeassistantApi;
 use Illuminate\Support\Str;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
 
+/**
+ * @method Api\States states()
+ * @method Api\Services services()
+ * @method Api\Events events()
+ * @method Api\History history()
+ * @method Api\Logbook logbook()
+ * @method Api\Config config()
+ * @method Api\System system()
+ * @method Api\Templates templates()
+ */
 class HomeassistantApi
 {
     protected ApiClient $client;
 
     public function __construct(?ApiClient $client = null)
     {
-        $this->client = $client ?? new ApiClient();
+        $this->client = $client ?? new ApiClient;
     }
 
+    /**
+     * @param  array<string, mixed>|null  $config
+     */
     public static function make(?array $config = null): self
     {
         return new self(
@@ -21,16 +34,24 @@ class HomeassistantApi
         );
     }
 
+    /**
+     * @param  list<mixed>  $parameters
+     */
     public function __call(string $method, array $parameters): object
     {
         return $this->getApiInstance($method);
     }
 
+    public function template(): Api\Templates
+    {
+        return new Api\Templates($this->client);
+    }
+
     protected function getApiInstance(string $method): object
     {
-        $class = __NAMESPACE__ . '\\Api\\' . Str::studly($method);
+        $class = __NAMESPACE__.'\\Api\\'.Str::studly($method);
 
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             throw new \BadMethodCallException(
                 sprintf(
                     'API endpoint [%s] does not exist. Expected class %s.',

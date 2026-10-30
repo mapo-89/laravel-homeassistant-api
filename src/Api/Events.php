@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Events.php
  * @author Manuel Postler <info@postler.de>
@@ -8,7 +9,9 @@
 namespace Mapo89\LaravelHomeassistantApi\Api;
 
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
+use Mapo89\LaravelHomeassistantApi\Api\Utils\ResponseValidator;
 use Mapo89\LaravelHomeassistantApi\DTOs\Event;
+use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
 
 class Events
 {
@@ -28,7 +31,7 @@ class Events
      */
     public function all(): array
     {
-        $raw = $this->client->_get('events');
+        $raw = ResponseValidator::records($this->client->_get('events'), 'events');
 
         return array_map(
             fn (array $event) => new Event($event),
@@ -40,10 +43,15 @@ class Events
      * Fire a custom Home Assistant event
      *
      * POST /api/events/{event_type}
+     *
+     * @param  array<string, mixed>  $data
      */
     public function fire(string $eventType, array $data = []): bool
     {
-        $this->client->_post("events/{$eventType}", $data);
+        $response = $this->client->_post("events/{$eventType}", $data);
+        if (! is_string($response['message'] ?? null) || $response['message'] === '') {
+            throw new HomeAssistantException('Home Assistant returned an invalid event response.');
+        }
 
         return true;
     }
