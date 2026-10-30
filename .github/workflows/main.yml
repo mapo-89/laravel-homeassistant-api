@@ -22,7 +22,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           tools: composer:v2
           extensions: curl, mbstring, dom, fileinfo, pdo_sqlite, bcmath
           coverage: none
@@ -118,6 +118,10 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # Current Pint needs PHP 8.3; runtime compatibility tests still cover PHP 8.2.
+          if [ "${{ matrix.php }}" = '8.2' ]; then
+            composer require --dev 'laravel/pint:~1.27.0' --no-interaction --no-update
+          fi
           composer require --dev "laravel/framework:${{ matrix.laravel }}" --no-interaction --no-update
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction
 

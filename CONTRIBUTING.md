@@ -59,6 +59,8 @@ before submitting a pull request. It validates Composer metadata and PSR-4
 loading, checks Pint formatting, runs PHPStan with Larastan at level 6 over `src/`,
 runs the PHP tests, and audits installed dependencies for security advisories.
 Static analysis targets PHP 8.2; CI also tests the supported PHP/Laravel versions.
+Current development tools need PHP 8.3 or newer. The PHP 8.2 runtime test jobs use
+a compatible Pint version without changing the package runtime requirement.
 Fix findings in code or precise type annotations rather than adding a baseline.
 
 Run individual checks with `composer check-style`, `composer analyse`,
