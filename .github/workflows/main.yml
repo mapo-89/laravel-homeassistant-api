@@ -88,12 +88,9 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php: ['8.2', '8.3', '8.4', '8.5']
+        php: ['8.3', '8.4', '8.5']
         laravel: ['^12.0', '^13.0']
         stability: [prefer-stable, prefer-lowest]
-        exclude:
-          - php: '8.2'
-            laravel: '^13.0'
 
     name: PHP ${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.stability }}
 
@@ -118,10 +115,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Current Pint needs PHP 8.3; runtime compatibility tests still cover PHP 8.2.
-          if [ "${{ matrix.php }}" = '8.2' ]; then
-            composer require --dev 'laravel/pint:~1.27.0' --no-interaction --no-update
-          fi
           composer require --dev "laravel/framework:${{ matrix.laravel }}" --no-interaction --no-update
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction
 

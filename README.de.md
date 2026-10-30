@@ -19,8 +19,8 @@ separaten URLs und Token je Installation.
 
 ## Voraussetzungen
 
-- PHP ab Version 8.2
-- Laravel 12 oder 13 (Laravel 13 benötigt mindestens PHP 8.3)
+- PHP ab Version 8.3
+- Laravel 12 oder 13
 - Eine Home-Assistant-Instanz und ein Zugriffstoken
 
 ## Installation

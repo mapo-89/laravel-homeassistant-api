@@ -19,8 +19,8 @@ for separate URLs and tokens per installation.
 
 ## Requirements
 
-- PHP 8.2 or newer
-- Laravel 12 or 13 (Laravel 13 requires PHP 8.3 or newer)
+- PHP 8.3 or newer
+- Laravel 12 or 13
 - A Home Assistant instance and an access token
 
 ## Installation
