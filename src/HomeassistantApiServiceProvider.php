@@ -7,38 +7,31 @@
 
 namespace Mapo89\LaravelHomeassistantApi;
 
-use Illuminate\Support\ServiceProvider;
+use Mapo89\LaravelHomeassistantApi\Console\HomeassistantCommand;
+use Spatie\LaravelPackageTools\Package;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class HomeassistantApiServiceProvider extends ServiceProvider
+class HomeassistantApiServiceProvider extends PackageServiceProvider
 {
-    /**
-     * Register the application services.
-     */
-    public function register(): void
+    public function configurePackage(Package $package): void
     {
-        // Automatically apply the package configuration
-        $this->mergeConfigFrom(__DIR__ . '/../config/config.php', 'homeassistant-api');
-
-        // Register the main class to use with the facade
-        $this->app->singleton('homeassistant-api', function () {
-            return new HomeassistantApi();
-        });
+        $package
+            ->name('laravel-homeassistant-api')
+            ->hasConfigFile()
+            ->hasCommand(HomeassistantCommand::class);
     }
 
-    /**
-     * Bootstrap the application services.
-     */
-    public function boot(): void
+    public function packageRegistered(): void
+    {
+        $this->app->singleton(HomeassistantApi::class);
+        $this->app->alias(HomeassistantApi::class, 'homeassistant-api');
+    }
+
+    public function packageBooted(): void
     {
         if ($this->app->runningInConsole()) {
-             // Publishing config.
-            $this->publishes([
-                __DIR__.'/../config/config.php' => config_path('homeassistant-api.php'),
-            ], 'config');
-
-            $this->commands([
-                Console\HomeassistantCommand::class,
-            ]);
+            // Preserve the original publish tag for existing applications.
+            $this->publishes(static::pathsToPublish(static::class, 'homeassistant-api-config'), 'config');
         }
     }
 }
