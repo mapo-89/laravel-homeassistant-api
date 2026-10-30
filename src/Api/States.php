@@ -9,12 +9,15 @@
 namespace Mapo89\LaravelHomeassistantApi\Api;
 
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
+use Mapo89\LaravelHomeassistantApi\Api\Utils\EntityId;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\StateCache;
 use Mapo89\LaravelHomeassistantApi\DTOs\State;
 use Mapo89\LaravelHomeassistantApi\Exceptions\HomeAssistantException;
 use Mapo89\LaravelHomeassistantApi\Query\StatesQuery;
 
 /**
+ * @mixin StatesQuery
+ *
  * Homeassistant REST Api
  *
  * @see https://developers.home-assistant.io/docs/api/rest
@@ -28,12 +31,18 @@ class States
         $this->client = $client;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getConfig(): array
     {
         return $this->client->getConfig();
     }
 
-    public function __call($method, $arguments)
+    /**
+     * @param  list<mixed>  $arguments
+     */
+    public function __call(string $method, array $arguments): mixed
     {
         return $this->query()->{$method}(...$arguments);
     }
@@ -73,10 +82,19 @@ class States
     // =========================== get ====================================
 
     /**
-     * Return a single state.
+     * Return one state, or all states when no entity ID is supplied.
+     *
+     * @return State|State[]
+     *
+     * @phpstan-return ($entity_id is null ? list<State> : State)
      */
-    public function get($entity_id): State
+    public function get(?string $entity_id = null): State|array
     {
+        if ($entity_id === null) {
+            return $this->all();
+        }
+        EntityId::domain($entity_id);
+
         return new State(
             $this->client->_get('states/'.$entity_id)
         );
@@ -87,10 +105,13 @@ class States
     /**
      * Create or update a state.
      *
+     * @param  array<string, mixed>  $attributes
+     *
      * @throws HomeAssistantException
      */
     public function createOrUpdate(string $entity_id, string $state, array $attributes = []): State
     {
+        EntityId::domain($entity_id);
         $payload = [
             'state' => $state,
             'attributes' => $attributes,
@@ -111,6 +132,7 @@ class States
      */
     public function delete(string $entity_id): bool
     {
+        EntityId::domain($entity_id);
         $this->client->_delete('states/'.$entity_id);
         StateCache::forget($this->client->getConfig());
 

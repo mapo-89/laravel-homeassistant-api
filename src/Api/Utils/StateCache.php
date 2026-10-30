@@ -7,6 +7,11 @@ use Throwable;
 
 final class StateCache
 {
+    /**
+     * @param  array{url: string, token: string, ...<string, mixed>}  $config
+     * @param  callable(): array<array-key, mixed>  $fetch
+     * @return array<array-key, mixed>
+     */
     public static function remember(array $config, callable $fetch): array
     {
         if (! ($config['cache_responses'] ?? true)) {
@@ -35,6 +40,9 @@ final class StateCache
         return $states;
     }
 
+    /**
+     * @param  array{url: string, token: string, ...<string, mixed>}  $config
+     */
     public static function forget(array $config): void
     {
         $key = self::key($config);
@@ -45,8 +53,11 @@ final class StateCache
         }
     }
 
+    /**
+     * @param  array{url: string, token: string, ...<string, mixed>}  $config
+     */
     private static function key(array $config): string
     {
-        return 'ha.states.'.hash('sha256', json_encode([rtrim($config['url'], '/'), $config['token']], JSON_THROW_ON_ERROR));
+        return 'ha.states.'.hash('sha256', json_encode([ApiUrl::normalize($config['url']), $config['token']], JSON_THROW_ON_ERROR));
     }
 }

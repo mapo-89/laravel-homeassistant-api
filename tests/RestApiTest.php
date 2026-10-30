@@ -137,7 +137,9 @@ final class RestApiTest extends TestCase
 
     public function test_logbook_sends_the_start_in_the_path_and_the_end_as_a_query_parameter(): void
     {
-        Http::fake(['*' => Http::response([['entity_id' => 'light.kitchen', 'name' => 'Kitchen']])]);
+        Http::fake(['*' => Http::response([[
+            'entity_id' => 'light.kitchen', 'name' => 'Kitchen', 'when' => '2026-10-01T10:00:00+02:00',
+        ]])]);
         $start = CarbonImmutable::parse('2026-10-01T10:00:00+02:00');
         $end = $start->addHours(2);
 
@@ -500,7 +502,9 @@ final class RestApiTest extends TestCase
 
     public function test_connection_failures_do_not_expose_transport_details(): void
     {
-        Http::fake(function () { throw new ConnectionException(self::TOKEN); });
+        Http::fake(function () {
+            throw new ConnectionException(self::TOKEN);
+        });
         try {
             HomeassistantApi::make()->system()->verify();
             $this->fail('A connection error must be rejected.');
