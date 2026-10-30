@@ -12,145 +12,94 @@
 
 <a href="https://buymeacoffee.com/mapo"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="60"></a>
 
-Eine einfache Laravel-Integration für die [Homeassistant API](https://developers.home-assistant.io/docs/api/rest). Dieses Paket stellt eine saubere Schnittstelle zur Verfügung, um mit der API zu interagieren.
+Laravel-Integration für die REST- und WebSocket-APIs von Home Assistant, mit
+separaten URLs und Token je Installation.
 
-📖 Diese README ist auch auf [🇬🇧 Englisch](README.md) verfügbar.
-
-## Funktionen
-
-* REST- und WebSocket-Zugriff auf Home Assistant
-* Dynamische URL und Token je Installation
-* States mit Query-Builder, Services, Events, History und Logbook
-* Konfiguration und Artisan-Befehl `ha:call`
+[English documentation](README.md)
 
 ## Voraussetzungen
 
-* PHP >= 8.2
-* Laravel 12 oder 13 (abhängig von der PHP-Version)
-* Eine erreichbare Home-Assistant-Instanz und ein Zugriffstoken
-
----
+- PHP ab Version 8.2
+- Laravel 12 oder 13 (Laravel 13 benötigt mindestens PHP 8.3)
+- Eine Home-Assistant-Instanz und ein Zugriffstoken
 
 ## Installation
-
-Installiere das Paket über Composer:
 
 ```bash
 composer require mapo-89/laravel-homeassistant-api
 ```
 
-Füge deinen API-Token in deine `.env`-Datei ein:
+Laravel registriert den Service Provider und die Fassade automatisch.
+Konfiguriere deine Installation in der `.env`:
 
 ```env
 HA_URL=http://homeassistant.local:8123
 HA_TOKEN=your_long_lived_token
 ```
 
-## Dynamische Konfiguration (URL & Token zur Laufzeit)
+## Konfiguration
 
-Neben der statischen Konfiguration über die `config/homeassistant-api.php` unterstützt dieses Package auch dynamische Konfigurationen zur Laufzeit.
-Das ist z. B. nützlich, wenn jeder Benutzer einen eigenen Home Assistant Token besitzt oder die Instanz-URL dynamisch gesetzt werden soll.
-
-Optional: Veröffentliche die Konfigurationsdatei:
+Veröffentliche bei Bedarf `config/homeassistant-api.php`:
 
 ```bash
 php artisan vendor:publish --tag=homeassistant-api-config
 ```
 
-Der bisherige Tag `--tag=config` bleibt unterstützt. Laravel registriert den Service Provider und die Fassade automatisch.
+Der bisherige Tag `--tag=config` bleibt unterstützt.
 
-REST-Zeitlimits und der States-Cache lassen sich in der veröffentlichten Konfiguration
-oder im Array für `HomeassistantApi::make($config)` einstellen:
-
-```php
-'connect_timeout' => 3, // Sekunden bis zum Verbindungsaufbau
-'timeout' => 8, // Sekunden pro REST-Anfrage
-'cache_responses' => true, // States-Listen fünf Sekunden je URL und Token cachen
-```
-
-Erfolgreiche `states()->createOrUpdate()`-, `states()->delete()`- und Service-Aufrufe
-invalidieren die gecachte States-Liste für die verwendete URL und den Token.
-Fehlgeschlagene API-Aufrufe lassen den Cache bestehen. Bei nicht verfügbarem Cache
-werden States direkt abgerufen; Cache-Fehler verdecken keine erfolgreichen API-Aufrufe.
-Die Invalidierung wird auch bei deaktivierten Cache-Lesezugriffen versucht, damit
-andere Clients mit derselben URL und demselben Token aktuelle Daten erhalten.
-Scheitert sie, kann ein alter Eintrag bis zum Ablauf der fünf Sekunden bestehen bleiben.
-
-Mit `cache_responses => false` wird jede States-Liste neu abgerufen. Dynamische
-Konfigurationen müssen weiterhin eine eigene URL und einen Token enthalten.
-
----
+| Option | Standard | Zweck |
+| --- | --- | --- |
+| `connect_timeout` | `3` | Zeitlimit für den Verbindungsaufbau in Sekunden. |
+| `timeout` | `8` | Zeitlimit pro Anfrage in Sekunden. |
+| `cache_responses` | `true` | States-Listen fünf Sekunden cachen; mit `false` stets neu abrufen. |
 
 ## Verwendung
-
-> 📚 Die vollständige API-Dokumentation findest du hier: [home-assistant.io](https://developers.home-assistant.io/docs/api/rest)
-
-### Initialisierung
 
 ```php
 use Mapo89\LaravelHomeassistantApi\Facades\HomeassistantApi;
 
-$homeassistantApi = HomeassistantApi::make();
+$ha = HomeassistantApi::make();
 
-//Alternative mit dynamischer Konfiguration
-$config = [
-    'url' => 'http://homeassistant.local:8123',
-    'token' => 'your_long_lived_token'
-];
-$homeassistantApi = HomeassistantApi::make($config);
+// Für eine andere Installation sowohl URL als auch Token übergeben.
+$ha = HomeassistantApi::make([
+    'url' => 'https://homeassistant.example.com',
+    'token' => 'your_long_lived_token',
+]);
 ```
 
----
+Die Konfigurationsoptionen können auch im Array für `make()` gesetzt werden.
 
-### System API
+### States und Filter
 
 ```php
-// Prüfen, ob die API funktioniert
-$homeassistantApi->system()->verify();
+$states = $ha->states()->get(); // State[]; all() ist ein gleichwertiger Alias
+$state = $ha->states()->get('light.kitchen'); // State
+
+$lights = $ha->states()
+    ->whereDomain('light')
+    ->whereState('on')
+    ->get();
 ```
 
----
+Die Filter werden auf die abgerufene States-Liste angewendet.
 
-### Config API
+| Methode | Zweck |
+| --- | --- |
+| `whereDomain($domain)` | Nach Entity-Domain filtern. |
+| `whereState($state)` | Nach Zustand filtern. |
+| `whereEntityIds($ids)` | Nach Entity-IDs filtern. |
+| `whereAttribute($key, $value)` | Nach einem Attributwert filtern. |
+| `get()` | Passende `State`-Objekte zurückgeben. |
+| `first()` | Das erste passende `State`-Objekt oder `null` zurückgeben. |
 
-```php
-// Gebe aktuelle Konfiguration aus
-$homeassistantApi->config()->get();
-
-// Prüfe aktuelle Konfiguration
-$homeassistantApi->config()->check();
-```
-
----
-
-### Externe URL setzen
+### Services
 
 ```php
-$homeassistantApi->config()->setExternalUrl('https://kunde.example.com');
-```
+$ha->services()->turnOn('light.kitchen', ['brightness' => 80]);
+$ha->services()->turnOff('light.kitchen');
+$ha->services()->toggle('light.kitchen');
 
-Die Methode authentifiziert sich über die WebSocket-API, ändert ausschließlich
-`external_url` und liest den Wert anschließend zur Bestätigung zurück. Der Token
-muss zu einem Home-Assistant-Administrator gehören. TLS-Prüfung bleibt aktiv;
-Verbindungs- und Antwortzeiten sind begrenzt. Mit `HomeassistantApi::make($config)`
-lassen sich URL und Token je Installation separat übergeben.
-
-### States API
-
-```php
-$homeassistantApi->states()->all(); // passe das an deinen Anwendungsfall an
-```
-
----
-
-### Services API
-
-```php
-$homeassistantApi->services()->turnOn('light.kitchen', ['brightness' => 80]);
-$homeassistantApi->services()->turnOff('light.kitchen');
-$homeassistantApi->services()->toggle('light.kitchen');
-
-$response = $homeassistantApi->services()->call(
+$response = $ha->services()->call(
     'weather',
     'get_forecasts',
     ['entity_id' => 'weather.home', 'type' => 'daily'],
@@ -159,308 +108,87 @@ $response = $homeassistantApi->services()->call(
 $forecast = $response['service_response']['weather.home']['forecast'];
 ```
 
-Ohne `returnResponse: true` gibt `call()` die Liste geänderter States zurück.
-Mit der Option wird `?return_response` als Query-Parameter gesendet; das Ergebnis
-enthält `changed_states` und `service_response`. Verwende die Option für Dienste,
-die Antworten unterstützen oder verlangen. Die Komfortmethoden prüfen Entity-IDs
-vor dem Request und werfen bei ungültigem Format eine `InvalidArgumentException`.
+`call()` liefert normalerweise die geänderten States. Für Dienste, die eine
+Antwort unterstützen oder verlangen, liefert `returnResponse: true` die Felder
+`changed_states` und `service_response`.
 
----
-
-### Template API
-
-Mehr Infos zum [Templating](https://www.home-assistant.io/docs/configuration/templating)
+### System und Konfiguration
 
 ```php
-// rendert ein Template
-$homeassistantApi->template()->render(<<<'TEMPLATE'
-    Paulus is at {{ states('device_tracker.paulus') }}!
-    TEMPLATE
-);
+$ha->system()->verify();
+$ha->config()->get();
+$ha->config()->check();
+$ha->config()->setExternalUrl('https://customer.example.com');
 ```
 
-`templates()->render(...)` bleibt als gleichwertiger Aufruf unterstützt.
+Zum Setzen der externen URL wird ein Home-Assistant-Administrator-Token benötigt.
 
----
-
-### Events API
-
-Interaktion mit dem Home Assistant Event-System.
+### Templates und Events
 
 ```php
-// Alle verfügbaren Events abrufen
-$events = $homeassistantApi->events()->all();
+$text = $ha->template()->render('Temperature: {{ states("sensor.kitchen_temperature") }}');
 
-// Custom Event auslösen
-$homeassistantApi->events()->fire('my_custom_event', [
-    'source' => 'laravel',
-    'user_id' => 123,
-]);
+$events = $ha->events()->all();
+$ha->events()->fire('my_custom_event', ['source' => 'laravel']);
 ```
 
-`fire()` kann auch ohne Nutzdaten aufgerufen werden; dann wird ein leeres
-JSON-Objekt (`{}`) gesendet.
+### History und Logbook
 
-**Unterstützte Endpunkte**
-- `GET /api/events`
-- `POST /api/events/{event_type}`
-
----
-
-### History API
-
-Zugriff auf historische State-Änderungen von Entities.
+Beide APIs benötigen mindestens eine Entity-ID. Datumswerte können als `Carbon`
+oder `CarbonImmutable` übergeben werden.
 
 ```php
-// Gruppierte Historie nach Entity
-$history = $homeassistantApi->history()->get(
-    start: now()->subHours(12),
-    entityIds: ['light.kitchen', 'sensor.temperature'],
-    significantOnly: true
-);
+$entities = ['light.kitchen'];
+$start = now()->subHours(6);
 
-// Zugriff pro Entity
-$history['light.kitchen']; // HistoryState[]
+$history = $ha->history()->get(start: $start, entityIds: $entities);
+$flat = $ha->history()->flat(start: $start, entityIds: $entities);
+$entries = $ha->logbook()->get(entityIds: $entities, start: $start, end: now());
 ```
 
-**Flache Ausgabe (ideal für Charts & Analytics)**
+`get()` gruppiert `HistoryState`-Objekte nach Entity-ID, `flat()` liefert eine
+flache Liste. History unterstützt außerdem die Optionen `significantOnly` und
+`minimal`. Logbook gibt `LogbookEntry`-Objekte zurück.
 
-```php
-$flat = $homeassistantApi->history()->flat(
-    start: now()->subHours(6),
-    entityIds: ['light.kitchen', 'sensor.temperature'],
-);
+Details zu den Home-Assistant-Endpunkten stehen in der [REST-API-Dokumentation](https://developers.home-assistant.io/docs/api/rest).
 
-```
-
-`get()` und `flat()` akzeptieren für Start und Ende sowohl `Carbon` als auch
-`CarbonImmutable` über `CarbonInterface`.
-
-`significantOnly` ist standardmäßig `false` und fordert alle Änderungen an.
-Mit `minimal: true` liefert Home Assistant für Zwischenstände nur State und
-Änderungszeit. Die Entity-ID wird aus der Gruppe ergänzt; `lastUpdated` verwendet
-dann `lastChanged`, und fehlende Attribute werden als leeres Array dargestellt.
-
-**Unterstützte Endpunkte**
-- `GET /api/history/period`
-- `GET /api/history/period/{timestamp}`
-
----
-
-### Logbook API
-
-Zugriff auf das Home Assistant Logbook – ideal für Benutzeraktivitäten, Automationen und Systemereignisse.
-
-> ⚠️ Die Logbook-API erfordert mindestens eine `entityId`.
-
-```php
-$entries = $homeassistantApi->logbook()->get(
-    start: now()->subHours(6),
-    entityIds: ['light.kitchen'],
-    end: now()
-);
-```
-
-**Unterstützter Endpunkt**
-- `GET /api/logbook/{timestamp}`
-
----
-
-
-## Query-Builder API (States)
-
-Home Assistant unterstützt kein serverseitiges Filtern von States.
-Dieses Package stellt daher eine **Query-Builder-artige API** zur Verfügung,
-mit der States clientseitig gefiltert werden können – inspiriert von Laravel Eloquent.
-
----
-
-## Beispiel
-
-```php
-use Mapo89\LaravelHomeassistantApi\Facades\HomeassistantApi;
-
-$states = HomeassistantApi::make()
-    ->states()
-    ->whereDomain('light')
-    ->whereState('on')
-    ->get();
-```
-
----
-
-## Verfügbare Query-Methoden
-
-### `whereDomain(string $domain)`
-
-Filtert nach der Domain einer Entity (z. B. `light`, `sensor`, `switch`).
-
-```php
-$lights = HomeassistantApi::make()
-    ->states()
-    ->whereDomain('light')
-    ->get();
-```
-
----
-
-### `whereState(string $state)`
-
-Filtert nach dem State einer Entity (z. B. `on`, `off`, `unavailable`).
-
-```php
-$active = HomeassistantApi::make()
-    ->states()
-    ->whereState('on')
-    ->get();
-```
-
----
-
-### `whereEntityIds(array $entityIds)`
-
-Filtert nach einer Liste konkreter Entity-IDs.
-
-```php
-$states = HomeassistantApi::make()
-    ->states()
-    ->whereEntityIds([
-        'light.kitchen',
-        'sensor.temperature',
-    ])
-    ->get();
-```
-
----
-
-### `whereAttribute(string $key, mixed $value)`
-
-Filtert nach Attributen einer Entity.
-
-```php
-$lights = HomeassistantApi::make()
-    ->states()
-    ->whereDomain('light')
-    ->whereAttribute('brightness', 255)
-    ->get();
-```
-
----
-
-### `get()`
-
-Gibt alle gefilterten States als Array von `State` DTOs zurück.
-
-```php
-$states = HomeassistantApi::make()
-    ->states()->get();
-```
-
----
-
-### `first()`
-
-Gibt den ersten passenden State oder `null` zurück.
-
-```php
-$state = HomeassistantApi::make()
-    ->states()
-    ->whereEntityIds(['light.kitchen'])
-    ->first();
-```
-
----
-
-## Artisan Command
-
-Die folgenden Artisan-Befehle verwenden immer die statische Konfiguration aus der `.env` bzw. aus `config/homeassistant-api.php`:
+### Artisan
 
 ```bash
-# Alle States auflisten
 php artisan ha:call
-
-# Einen Service aufrufen (z.B. Licht umschalten)
-php artisan ha:call light toggle --entity=light.wohnzimmer
+php artisan ha:call --entity=light.kitchen
+php artisan ha:call light toggle --entity=light.kitchen
 ```
 
----
+Artisan verwendet die statische Paketkonfiguration.
 
-## Changelog
+## Umstieg auf Version 2
 
-Alle Änderungen findest du im [CHANGELOG](CHANGELOG.md).
+- Laravel 10 und 11 werden nicht mehr unterstützt.
+- `States` und `Services` erben nicht mehr von `ApiClient`. Verwende für direkte
+  HTTP-Anfragen den [ApiClient](src/Api/Utils/ApiClient.php).
 
----
+API-Fehler werfen eine `HomeAssistantException`, ungültige Argumente eine `InvalidArgumentException`.
 
-## Mitwirken
+## Entwicklung
 
-Beiträge sind herzlich willkommen! Details findest du in der [CONTRIBUTING](CONTRIBUTING.md)-Datei.
+```bash
+composer install
+composer qa
+```
 
----
+Die Tests verwenden simulierte API-Antworten und benötigen keine laufende
+Home-Assistant-Instanz. Hinweise zu Entwicklung, Abhängigkeitsupdates und Releases
+stehen in [CONTRIBUTING](CONTRIBUTING.md) und im [Release-Leitfaden](.release/README.md).
+Änderungen findest du im [CHANGELOG](CHANGELOG.md).
 
 ## Sicherheit
 
-Wenn du sicherheitsrelevante Probleme entdeckst, melde dich bitte **nicht** über den Issue Tracker, sondern direkt per E-Mail an [info@postler.de](mailto:info@postler.de).
+Melde Sicherheitsprobleme an [info@postler.de](mailto:info@postler.de).
 
----
-
-## Credits
+## Credits und Lizenz
 
 - [Manuel Postler](https://github.com/mapo-89)
 - [Alle Mitwirkenden](../../contributors)
 
----
-
-## Lizenz
-
-Dieses Paket steht unter der [MIT Lizenz](LICENSE.md).
-
----
-
-## Package-Tools
-
-Konfiguration und Befehle werden mit [Spatie Laravel Package Tools](https://github.com/spatie/laravel-package-tools) registriert.
-
-## API-Kompatibilität in Version 2
-
-`States` und `Services` sind eigenständige API-Endpunkte und erben nicht mehr von
-`ApiClient`. Ihr `getConfig()` verwendet die Konfiguration des injizierten Clients.
-Für Low-Level-Anfragen mit `execute()`, `_get()`, `_post()`, `_put()`, `_patch()` oder
-`_delete()` verwende direkt `Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient`.
-
-Ungültige oder skalare JSON-Antworten werfen eine `HomeAssistantException` mit
-fester Meldung ohne Antwortinhalt. Eine leere HTTP-204-Antwort wird als leeres
-Array zurückgegeben; Template-Antworten bleiben unveränderter Klartext.
-
-## Tests
-
-```bash
-composer install
-composer test
-```
-
-Die Integrationstests prüfen Konfigurations-Merging, beide Publish-Tags,
-die Registrierung von `ha:call` sowie die gemeinsame Service- und Fassadeninstanz.
-Die WebSocket-Tests verwenden Mocks und benötigen keine laufende Home-Assistant-Instanz.
-REST-Tests prüfen mit Laravel-HTTP-Fakes die CLI-Ausgabe, Templates, History,
-Logbook-Zeiträume, Zeitlimits, Cache-Trennung und Fehlerbehandlung. Die
-WebSocket-Tests decken auch Neustartbedarf, Registry-Gruppen und Token-Operationen ab.
-
-## Releases und Abhängigkeitsupdates
-
-Commit-Kategorien und Release-Regeln folgen dem [gemeinsamen Release-Standard](.release/README.md).
-Feature-Branches starten von `main` und werden einzeln in `release/X.Y.Z` gesquasht.
-Direkte kategorisierte Commits auf dem Release-Branch sind ebenfalls erlaubt.
-Normale Commits ändern weder Versionen noch Changelog. Erst zur Finalisierung
-wird `node .release/branches.mjs prepare` gesammelt ausgeführt.
-Der vorbereitete Release gelangt über einen geprüften Pull Request mit einem
-Merge-Commit `🚀 Release: X.Y.Z` nach `main`. Die Veröffentlichung setzt erfolgreiche
-CI für genau diesen Merge-Commit voraus; bestehende Tags bleiben unverändert.
-Nach erfolgreicher Veröffentlichung und Prüfung wird der vollständig integrierte
-Release-Branch entfernt. Normale Pushes veröffentlichen keinen Release.
-
-Dependabot schlägt montags Updates für Composer und GitHub Actions vor.
-Minor- und Patch-Updates werden je Ökosystem gruppiert, Major-Updates separat geprüft.
-Ausgewählte Update-PRs werden auf den aktiven Release-Branch umgestellt, geprüft
-und dort per Squash-Merge integriert. Bot-PRs werden nicht automatisch gemergt
-und autorisieren keinen Release. Die Konfiguration wird nach Übernahme nach `main`
-aktiv; gegebenenfalls müssen Versionsupdates in GitHub aktiviert werden.
+Veröffentlicht unter der [MIT-Lizenz](LICENSE.md).
