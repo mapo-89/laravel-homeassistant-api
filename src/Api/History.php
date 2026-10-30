@@ -2,7 +2,7 @@
 
 namespace Mapo89\LaravelHomeassistantApi\Api;
 
-use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Mapo89\LaravelHomeassistantApi\Api\Utils\ApiClient;
 use Mapo89\LaravelHomeassistantApi\DTOs\HistoryState;
 
@@ -18,8 +18,8 @@ class History
     /**
      * Get state history
      *
-     * @param Carbon|null $start
-     * @param Carbon|null $end
+     * @param CarbonInterface|null $start
+     * @param CarbonInterface|null $end
      * @param array $entityIds
      * @param bool $significantOnly
      * @param bool $minimal
@@ -27,8 +27,8 @@ class History
      * @return array<string, HistoryState[]>
      */
     public function get(
-        ?Carbon $start = null,
-        ?Carbon $end = null,
+        ?CarbonInterface $start = null,
+        ?CarbonInterface $end = null,
         array $entityIds = [],
         bool $significantOnly = false,
         bool $minimal = false
@@ -64,8 +64,8 @@ class History
      * @return HistoryState[]
      */
     public function flat(
-        ?Carbon $start = null,
-        ?Carbon $end = null,
+        ?CarbonInterface $start = null,
+        ?CarbonInterface $end = null,
         array $entityIds = [],
         bool $significantOnly = false,
         bool $minimal = false

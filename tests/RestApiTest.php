@@ -202,4 +202,62 @@ final class RestApiTest extends TestCase
             $this->assertNull($exception->getPrevious());
         }
     }
+
+    public function test_events_without_data_send_an_empty_json_object_and_keep_nonempty_payloads(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Event fired.'])]);
+        $events = HomeassistantApi::make()->events();
+
+        $this->assertTrue($events->fire('empty_event'));
+        $this->assertTrue($events->fire('populated_event', ['name' => 'Kitchen', 'items' => []]));
+
+        Http::assertSent(fn (Request $request) => $request->url() === self::URL.'/api/events/empty_event'
+            && $request->method() === 'POST' && $request->body() === '{}');
+        Http::assertSent(fn (Request $request) => $request->url() === self::URL.'/api/events/populated_event'
+            && json_decode($request->body(), true) === ['name' => 'Kitchen', 'items' => []]);
+        Http::assertSentCount(2);
+    }
+
+    public function test_history_accepts_immutable_dates_for_grouped_and_flat_results(): void
+    {
+        Http::fake(['*' => Http::response([[[
+            'entity_id' => 'sensor.temperature', 'state' => '20',
+            'last_changed' => '2026-10-01T10:00:00Z', 'last_updated' => '2026-10-01T10:00:00Z',
+        ]]])]);
+        $start = CarbonImmutable::parse('2026-10-01T10:00:00+02:00');
+        $end = $start->addHours(2);
+        $history = HomeassistantApi::make()->history();
+
+        $grouped = $history->get($start, $end, ['sensor.temperature']);
+        $flat = $history->flat($start, $end, ['sensor.temperature']);
+
+        $this->assertSame('20', $grouped['sensor.temperature'][0]->state);
+        $this->assertSame('sensor.temperature', $flat[0]->entityId);
+        Http::assertSentCount(2);
+        Http::assertSent(fn (Request $request) => str_contains($request->url(), '/api/history/period/'.$start->toIso8601String())
+            && $request['end_time'] === $end->toIso8601String());
+    }
+
+    public function test_malformed_and_scalar_json_responses_raise_sanitized_package_exceptions(): void
+    {
+        $bodies = ['<html>'.self::TOKEN.'</html>', '{invalid-json:'.self::TOKEN, '',
+            'null', 'true', '123', json_encode(self::TOKEN)];
+        $sequence = Http::sequence();
+        foreach ($bodies as $body) {
+            $sequence->push($body, 200, ['Content-Type' => 'application/json']);
+        }
+        Http::fake(['*' => $sequence]);
+
+        foreach ($bodies as $body) {
+            try {
+                HomeassistantApi::make()->system()->verify();
+                $this->fail('Invalid JSON responses must be rejected.');
+            } catch (HomeAssistantException $exception) {
+                $this->assertSame('Home Assistant returned an invalid JSON response.', $exception->getMessage());
+                $this->assertStringNotContainsString(self::TOKEN, $exception->getMessage());
+                $this->assertNull($exception->getPrevious());
+            }
+        }
+        Http::assertSentCount(count($bodies));
+    }
 }

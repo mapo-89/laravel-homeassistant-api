@@ -51,12 +51,14 @@ class ApiClient
         $config = $this->getConfig();
         $baseUrl = $this->normalizeBaseUrl($config['url']);
         $apiToken = $config['token'];
+        // Home Assistant POST endpoints expect objects, even without payload fields.
+        $payload = $httpMethod === 'post' && $parameters === [] ? new \stdClass : $parameters;
 
         try {
             $response = Http::withToken($apiToken)->acceptJson()->withoutRedirecting()
                 ->connectTimeout((float) ($config['connect_timeout'] ?? 3))
                 ->timeout((float) ($config['timeout'] ?? 8))
-                ->$httpMethod("{$baseUrl}{$endpoint}", $parameters);
+                ->$httpMethod("{$baseUrl}{$endpoint}", $payload);
         } catch (ConnectionException) {
             throw new HomeAssistantException('Home Assistant could not be reached.');
         }
@@ -75,7 +77,25 @@ class ApiClient
             );
         }
 
-        return $asArray ? $response->json() : $response->body();
+        if (! $asArray) {
+            return $response->body();
+        }
+
+        if ($response->status() === 204 && $response->body() === '') {
+            return [];
+        }
+
+        try {
+            $decoded = json_decode($response->body(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new HomeAssistantException('Home Assistant returned an invalid JSON response.');
+        }
+
+        if (! is_array($decoded)) {
+            throw new HomeAssistantException('Home Assistant returned an invalid JSON response.');
+        }
+
+        return $decoded;
     }
 
     // ========================= base methods ======================================
