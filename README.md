@@ -122,6 +122,12 @@ $ha->config()->setExternalUrl('https://customer.example.com');
 
 Setting the external URL requires a Home Assistant administrator token.
 
+`WebSocketClient::systemState()` falls back to known active CHICO/HACS restart
+repairs when the system-state command is unsupported. Dismissed active repairs
+still count. In this fallback, `restartRequired` is `true` or `null` (unknown),
+`rebootRequired` is `null`, and `sources` lists the detected domains. Other errors
+fail the request.
+
 ### Templates and events
 
 ```php

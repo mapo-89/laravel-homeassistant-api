@@ -123,6 +123,12 @@ $ha->config()->setExternalUrl('https://customer.example.com');
 
 Zum Setzen der externen URL wird ein Home-Assistant-Administrator-Token benötigt.
 
+`WebSocketClient::systemState()` nutzt bekannte aktive CHICO-/HACS-Neustartmeldungen,
+wenn der Systemzustandsbefehl nicht unterstützt wird. Ausgeblendete aktive Meldungen
+zählen weiterhin. In diesem Fallback ist `restartRequired` entweder `true` oder
+`null` (unbekannt), `rebootRequired` ist `null`, und `sources` enthält die erkannten
+Domains. Bei anderen Fehlern schlägt der Aufruf fehl.
+
 ### Templates und Events
 
 ```php

@@ -107,6 +107,80 @@ final class WebSocketClientTest extends TestCase
             'sources' => ['config', 'integration']], $this->service($client)->systemState(self::URL, self::TOKEN));
         $this->assertSame(['type' => 'auth', 'access_token' => self::TOKEN], $sent[0]);
         $this->assertSame(['id' => 1, 'type' => 'subscribe_system_state'], $sent[1]);
+        $this->assertCount(2, $sent);
+    }
+
+    public function test_unknown_system_state_command_falls_back_to_known_active_repairs(): void
+    {
+        $sent = [];
+        $client = $this->conversation([
+            ['id' => 1, 'type' => 'result', 'success' => false, 'error' => ['code' => 'unknown_command']],
+            $this->resultResponse(2, ['issues' => [
+                ['domain' => 'chico', 'issue_id' => 'restart_required', 'translation_key' => 'restart_required', 'ignored' => true],
+                ['domain' => 'hacs', 'issue_id' => 'restart_required_123_v1.0', 'translation_key' => 'restart_required'],
+                ['domain' => 'hacs', 'issue_id' => 'restart_required_456_v2.0', 'translation_key' => 'restart_required'],
+                ['domain' => 'esphome', 'issue_id' => 'restart_required', 'translation_key' => 'restart_required'],
+            ]]),
+        ], $sent);
+
+        $this->assertSame(['restartRequired' => true, 'rebootRequired' => null, 'sources' => ['chico', 'hacs']], $this->service($client)->systemState(self::URL, self::TOKEN));
+        $this->assertSame(['id' => 2, 'type' => 'repairs/list_issues'], $sent[2]);
+        $this->assertCount(3, $sent);
+    }
+
+    public function test_missing_restart_repairs_do_not_claim_no_restart_is_required(): void
+    {
+        foreach ([[], [
+            ['domain' => 'esphome', 'issue_id' => 'restart_required', 'translation_key' => 'restart_required'],
+            ['domain' => 'hacs', 'issue_id' => 'restart_required_', 'translation_key' => 'restart_required'],
+            ['domain' => 'chico', 'issue_id' => 'other_restart_required', 'translation_key' => 'restart_required'],
+            ['domain' => 'hacs', 'issue_id' => 'restart_required_123_v1', 'translation_key' => 'other_issue'],
+        ]] as $issues) {
+            $sent = [];
+            $client = $this->conversation([
+                ['id' => 1, 'type' => 'result', 'success' => false, 'error' => ['code' => 'unknown_command']],
+                $this->resultResponse(2, ['issues' => $issues]),
+            ], $sent);
+            $this->assertSame(['restartRequired' => null, 'rebootRequired' => null, 'sources' => []], $this->service($client)->systemState(self::URL, self::TOKEN));
+        }
+    }
+
+    public function test_fallback_is_not_used_for_other_errors_or_invalid_command_responses(): void
+    {
+        foreach ([
+            ['id' => 1, 'type' => 'result', 'success' => false, 'error' => ['code' => 'unauthorized', 'message' => self::TOKEN]],
+            ['id' => 9, 'type' => 'result', 'success' => false, 'error' => ['code' => 'unknown_command']],
+            ['id' => 1, 'type' => 'event', 'success' => false, 'error' => ['code' => 'unknown_command']],
+            ['id' => 1, 'type' => 'result', 'error' => ['code' => 'unknown_command']],
+        ] as $response) {
+            $sent = [];
+            $client = $this->conversation([$response], $sent);
+            $this->assertSanitizedFailure('system', $this->service($client));
+            $this->assertCount(2, $sent);
+        }
+    }
+
+    public function test_invalid_or_failed_repairs_results_are_sanitized(): void
+    {
+        foreach ([null, [], ['issues' => null], ['issues' => ['key' => []]], ['issues' => [null]], ['issues' => [['domain' => 'chico']]]] as $result) {
+            $sent = [];
+            $client = $this->conversation([
+                ['id' => 1, 'type' => 'result', 'success' => false, 'error' => ['code' => 'unknown_command']],
+                $this->resultResponse(2, $result),
+            ], $sent);
+            $this->assertSanitizedFailure('system', $this->service($client));
+        }
+        foreach ([
+            ['id' => 2, 'type' => 'result', 'success' => false, 'error' => ['code' => 'unauthorized', 'message' => self::TOKEN]],
+            ['id' => 3, 'type' => 'result', 'success' => true, 'result' => ['issues' => []]],
+        ] as $response) {
+            $sent = [];
+            $client = $this->conversation([
+                ['id' => 1, 'type' => 'result', 'success' => false, 'error' => ['code' => 'unknown_command']],
+                $response,
+            ], $sent);
+            $this->assertSanitizedFailure('system', $this->service($client));
+        }
     }
 
     public function test_registry_batches_unique_update_entities_and_returns_only_requested_metadata(): void
