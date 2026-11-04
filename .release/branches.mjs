@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 import { config, git, isMain, planRelease, releaseNotes, syncVersion, stableTags, tryGit, verifyPreparedRelease, versionTuple } from './release.mjs'
 import { updateChangelog } from './changelog.mjs'
+import { requireGreenCi } from './ci.mjs'
 
 function workflow() {
     const value = config().branch_workflow
@@ -52,6 +53,7 @@ export function prepareRelease(notesFile = null) {
         verifyPreparedRelease('HEAD', number)
         return number
     }
+    requireGreenCi(settings, branch, git('rev-parse', 'HEAD'))
     if (settings.prepare_command) execFileSync(settings.prepare_command[0], [...settings.prepare_command.slice(1), number], { stdio: 'inherit' })
     syncVersion(number)
     const notes = notesFile ? readFileSync(notesFile, 'utf8') : releaseNotes(number, 'HEAD', null, null, false)
@@ -86,7 +88,7 @@ export function mergeRelease(version) {
     return git('rev-parse', 'HEAD')
 }
 
-export function checkPullRequest(base, head, ref, baseRef = null) {
+export function checkPullRequest(base, head, ref, baseRef = null, draft = false) {
     const { main } = workflow()
     if (base !== main) return
     if (!baseRef) throw new Error('The current main commit must be supplied explicitly with --base-ref')
@@ -94,17 +96,19 @@ export function checkPullRequest(base, head, ref, baseRef = null) {
     if (tryGit('merge-base', '--is-ancestor', currentMain, ref).status !== 0) {
         throw new Error('The release branch must include current main; update it, prepare again and rerun CI.')
     }
-    verifyPreparedRelease(ref, branchVersion(head))
+    const number = branchVersion(head)
+    // Draft PRs run full CI before versioning; ready PRs must be prepared.
+    if (!draft) verifyPreparedRelease(ref, number)
 }
 
 export function main(argv = process.argv.slice(2)) {
     const [command, ...args] = argv
-    const { values } = parseArgs({ args, options: { version: { type: 'string' }, 'notes-file': { type: 'string' }, bump: { type: 'string', default: 'patch' }, base: { type: 'string' }, 'base-ref': { type: 'string' }, head: { type: 'string' }, ref: { type: 'string', default: 'HEAD' } } })
+    const { values } = parseArgs({ args, options: { version: { type: 'string' }, 'notes-file': { type: 'string' }, bump: { type: 'string', default: 'patch' }, base: { type: 'string' }, 'base-ref': { type: 'string' }, head: { type: 'string' }, ref: { type: 'string', default: 'HEAD' }, draft: { type: 'boolean', default: false } } })
     if (command === 'start') console.log(startRelease(values.version, values.bump))
     else if (command === 'prepare') console.log(prepareRelease(values['notes-file']))
     else if (command === 'merge') throw new Error('Merge releases only through a reviewed pull request; local main merges are disabled.')
-    else if (command === 'check-pr') checkPullRequest(values.base, values.head, values.ref, values['base-ref'])
-    else throw new Error('Usage: node .release/branches.mjs <start [--version X.Y.Z|--bump patch|minor|major]|prepare [--notes-file FILE]|check-pr --base BRANCH --head BRANCH --ref SHA --base-ref BASE_SHA>')
+    else if (command === 'check-pr') checkPullRequest(values.base, values.head, values.ref, values['base-ref'], values.draft)
+    else throw new Error('Usage: node .release/branches.mjs <start [--version X.Y.Z|--bump patch|minor|major]|prepare [--notes-file FILE]|check-pr --base BRANCH --head BRANCH --ref SHA --base-ref BASE_SHA [--draft]>')
 }
 
 if (isMain(import.meta.url)) {

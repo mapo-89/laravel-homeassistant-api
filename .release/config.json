@@ -11,6 +11,11 @@
     ],
     "branch_workflow": {
         "main": "main",
-        "release_prefix": "release/"
+        "release_prefix": "release/",
+        "prepare_ci": {
+            "workflows": [
+                "main.yml"
+            ]
+        }
     }
 }
