@@ -2,6 +2,15 @@
 
 All notable changes to `laravel-homeassistant-api` will be documented in this file
 
+## v2.0.1 - 2026-11-04
+
+### 🐛 Fixes
+- Fall back to repairs for legacy restart checks
+
+### 🔧 Chores
+- Update actions/cache to v6
+- Require green draft CI before release preparation
+
 ## v2.0.0 - 2026-10-30
 
 ### 💥 Breaking Changes

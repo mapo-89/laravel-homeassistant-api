@@ -46,9 +46,28 @@ straight on `release/X.Y.Z`, including multiple implementation or fix commits.
 Those direct commits remain separate; they do not have to be squashed. Mixing
 direct commits with squashed feature branches is supported. Ordinary work commits
 leave version metadata and CHANGELOG.md unchanged. Collect the release scope
-first, then run `prepare` once as a finalization step before the release PR merge.
+first, validate the exact implementation SHA through a draft release PR, then run
+`prepare` once after its complete CI is green.
 Do not run it after every commit or just to keep a working branch prepared.
 The entire release still reaches main through one --no-ff merge commit.
+
+### CI before version preparation
+
+Keep the release PR in draft while collecting changes. Run all application,
+quality and release-policy checks on its exact implementation SHA first. Only
+when the final scope and those checks are green, run `prepare` once. Push the
+prepared metadata commit, mark the PR ready, and require fresh checks plus review
+before the authorized merge. Do not prepare after each failed CI attempt.
+
+`branch_workflow.prepare_ci.workflows` lists every required workflow for this
+repository: `main.yml`. `prepare` checks each latest PR run for the current SHA and
+release branch before changing files or creating a version commit. Missing,
+pending, failed, cancelled or skipped CI blocks preparation; an older success
+cannot hide a newer failure. An unchanged prepared tip remains an idempotent
+no-op. Late fixes require new green draft CI before another final preparation;
+no pushed history is rewritten automatically.
+
+GitHub checks use an authenticated GitHub CLI (`gh`) with Actions read access.
 
 ### Preparing an explicitly requested release
 
@@ -65,7 +84,7 @@ node .release/branches.mjs start --version 2.0.1
 git merge --squash feature/example
 git commit -m '✨ Feature: Add example capability'
 # Continue normal work commits without regenerating the changelog.
-# Once all intended changes are integrated and the release is being finalized:
+# After authorized push and successful full CI on a draft release PR:
 node .release/branches.mjs prepare
 ```
 
@@ -109,7 +128,8 @@ main; an exact input version must match it. A manual dispatch cannot bypass the
 release-merge checks or synthesize another release. For this package, successful
 `run-tests` push CI remains required for the exact merge commit.
 
-PRs targeting main must come from a prepared `release/X.Y.Z` branch.
+PRs targeting main must come from `release/X.Y.Z`. Draft release PRs may run full
+CI before preparation; ready PRs still require a prepared release tip.
 The policy job fetches the current remote main tip and passes it explicitly to
 `check-pr --base-ref`; it does not rely on a potentially stale local main branch.
 If that fetched tip is missing from the release branch, CI fails before merging.
@@ -163,7 +183,7 @@ for compatibility. Preserve historical tags and old version entries.
 ### Checks
 
 ```bash
-node --test .release/release.test.mjs .release/changelog.test.mjs .release/branches.test.mjs
+node --test .release/release.test.mjs .release/changelog.test.mjs .release/branches.test.mjs .release/ci.test.mjs
 node .release/release.mjs notes --version 2.0.1
 ```
 

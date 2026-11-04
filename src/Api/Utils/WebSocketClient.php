@@ -36,11 +36,21 @@ class WebSocketClient
         }, 'Home Assistant external URL could not be configured.');
     }
 
-    /** @return array<string, mixed> */
+    /** @return array{restartRequired: bool|null, rebootRequired: bool|null, sources: list<string>} */
     public function systemState(string $baseUrl, string $token): array
     {
         return $this->authenticated($baseUrl, $token, function (Client $client, float $deadline): array {
-            $this->command($client, $deadline, 1, 'subscribe_system_state');
+            $client->text(json_encode(['id' => 1, 'type' => 'subscribe_system_state'], JSON_THROW_ON_ERROR));
+            $response = $this->read($client, $deadline);
+            if (($response['type'] ?? null) !== 'result' || ($response['id'] ?? null) !== 1) {
+                throw new HomeAssistantException('Invalid system state response.');
+            }
+            if (($response['success'] ?? null) === false && ($response['error']['code'] ?? null) === 'unknown_command') {
+                return $this->repairSystemState($this->command($client, $deadline, 2, 'repairs/list_issues'));
+            }
+            if (($response['success'] ?? null) !== true) {
+                throw new HomeAssistantException('Home Assistant system state command was not confirmed.');
+            }
             $event = $this->read($client, $deadline);
             $state = $event['event'] ?? null;
             if (($event['type'] ?? null) !== 'event' || ($event['id'] ?? null) !== 1 || ! is_array($state)
@@ -54,6 +64,30 @@ class WebSocketClient
                 'sources' => array_values(array_filter(is_array($state['home_assistant_restart_sources'] ?? null) ? $state['home_assistant_restart_sources'] : [], 'is_string')),
             ];
         }, 'Home Assistant system state could not be read.');
+    }
+
+    /** @return array{restartRequired: true|null, rebootRequired: null, sources: list<string>} */
+    private function repairSystemState(mixed $result): array
+    {
+        if (! is_array($result) || ! is_array($result['issues'] ?? null) || ! array_is_list($result['issues'])) {
+            throw new HomeAssistantException('Invalid repairs response.');
+        }
+        $sources = [];
+        foreach ($result['issues'] as $issue) {
+            if (! is_array($issue) || ! is_string($issue['domain'] ?? null) || ! is_string($issue['issue_id'] ?? null)) {
+                throw new HomeAssistantException('Invalid repair issue.');
+            }
+            if (($issue['translation_key'] ?? null) !== 'restart_required') {
+                continue;
+            }
+            if (($issue['domain'] === 'chico' && $issue['issue_id'] === 'restart_required')
+                || ($issue['domain'] === 'hacs' && str_starts_with($issue['issue_id'], 'restart_required_') && strlen($issue['issue_id']) > 17)) {
+                $sources[] = $issue['domain'];
+            }
+        }
+        $sources = array_values(array_unique($sources));
+
+        return ['restartRequired' => $sources === [] ? null : true, 'rebootRequired' => null, 'sources' => $sources];
     }
 
     /**
